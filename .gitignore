@@ -1,0 +1,8 @@
+.env
+.env.*
+*.token
+secrets/
+config/
+assets-*/
+# sidecar は <FILLER_DIR>-texts.json 形式（CATY_FILLER_DIR で basename が変わる）
+*-texts.json

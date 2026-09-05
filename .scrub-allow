@@ -1,0 +1,12 @@
+# Plain entries are regex patterns; tab-separated entries are <path>\t<line substring>.
+0089dce5fefb4c6ba9b9f2f0debe1ddc
+deadbeef\\?\.0123456789abcdef0123456789abcdef
+src/caty_gateway/face_core.py	alpha bounding boxes
+src/caty_gateway/face_core.py	alpha bbox
+LICENSE	Copyright (c) 2026 SHO JIKUMARU
+100\.64\.0\.0/10
+fd7a:115c:a1e0::/48
+Tailscale
+~/\.openclaw/openclaw\.json
+# PROVENANCE table rows contain expected SHA-256 source and output digests.
+assets/PROVENANCE.md	|

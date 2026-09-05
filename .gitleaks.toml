@@ -1,0 +1,8 @@
+title = "caty-gateway gitleaks configuration"
+
+[allowlist]
+description = "Public catalog identifier and marked test canary"
+regexes = [
+  '''0089dce5fefb4c6ba9b9f2f0debe1ddc''',
+  '''deadbeef\.0123456789abcdef0123456789abcdef''',
+]

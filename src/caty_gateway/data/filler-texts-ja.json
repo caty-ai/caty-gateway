@@ -1,0 +1,14 @@
+{
+  "schema": "caty-filler-texts/1",
+  "language": "ja",
+  "tone": "neutral",
+  "source": "Caty AI contributors (original, in-house)",
+  "license": "MIT",
+  "kinds": {
+    "thinking": ["んー", "えっと"],
+    "wait": ["少し待ってね", "ちょっと確認しますね"],
+    "large": ["少し時間がかかりそう", "大きめの作業みたい"],
+    "alive": ["まだやってるよ", "もう少しね"],
+    "fail": ["ごめんね、もう一回お願い"]
+  }
+}

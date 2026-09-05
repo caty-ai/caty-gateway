@@ -1,0 +1,28 @@
+[Unit]
+Description=Caty Phone Gateway - %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__WORKDIR__
+# Mirror the launchd PATH so OPENCLAW_BIN/FFMPEG_BIN resolve without an override.
+# The user manager's inherited PATH often omits ~/.local/bin and /usr/local/bin.
+# The installer's render_unit sed rewrites %h to an absolute home at install time,
+# so this stays valid regardless of user-manager PATH quirks.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=%h/.config/caty-gateway/%i.env
+ExecStart=__PYTHON__ -m caty_gateway.caty_gateway
+# Parity with launchd KeepAlive=true: restart on clean exit as well as on failure.
+Restart=always
+RestartSec=5
+
+# Enabling a systemd --user unit is not sufficient by itself for the unit to run
+# without an active login session / after reboot on a typical server. The systemd
+# user manager instance for that UID is normally only started on login, or kept
+# alive by an existing session, unless lingering is enabled via
+# `loginctl enable-linger <user>`, which starts the user manager at boot and
+# keeps it running after logout. This is documented, standard systemd/logind
+# behavior.
+[Install]
+WantedBy=default.target

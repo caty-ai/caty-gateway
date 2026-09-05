@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "caty-gateway"
+version = "0.1.0"
+description = "A self-hosted voice and pairing gateway for Caty clients"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+readme = "README.md"
+dependencies = ["qrcode[pil]"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+caty-gateway = "caty_gateway.caty_gateway:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/caty_gateway"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/caty_gateway", "tests", "README.md", "LICENSE", "CONTRIBUTING.md", "docs", "assets", "tools", ".gitignore", ".gitleaks.toml", ".scrub-allow", "pyproject.toml"]
