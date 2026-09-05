@@ -1,0 +1,3 @@
+email-address	\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b
+internal-handoff-dir	_handoffs/
+internal-marker	TODO-before-public

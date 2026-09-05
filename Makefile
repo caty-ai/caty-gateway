@@ -1,11 +1,12 @@
 PYTHON ?= python3
 
-.PHONY: test lint env-check scrub build
+.PHONY: test lint env-check scrub gate build
 
 test:
 	$(PYTHON) -m pytest tests -q -p no:cacheprovider
 	bash tools/scrub-audit.sh .
 	$(MAKE) env-check
+	$(MAKE) gate
 
 lint:
 	$(PYTHON) -m compileall -q src
@@ -18,6 +19,10 @@ env-check:
 
 scrub:
 	bash tools/scrub-audit.sh .
+
+gate:
+	$(PYTHON) -B tools/check_publication_gate.py --selftest
+	$(PYTHON) -B tools/check_publication_gate.py --root . --account-slug shojikumaru --no-registry
 
 build:
 	uv build

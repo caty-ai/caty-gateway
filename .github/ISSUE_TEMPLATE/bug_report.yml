@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in caty-gateway does not behave as documented
+labels: ["bug", "needs-repro"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please run `caty-gateway doctor --backend <value>` first; its output contains no secrets and answers most questions.
+        For security problems use the private advisory form linked in SECURITY.md instead of this template.
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options:
+        - claude
+        - codex
+        - openclaw
+        - hermes
+        - openai-compat (Ollama / LM Studio / other)
+        - not backend related
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Host OS
+      options:
+        - macOS
+        - Linux
+        - Windows (WSL2)
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `caty-gateway doctor --backend <value>`
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you ran, what you expected, what happened. Redact tokens and URLs that point at your own network if you prefer.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: Output of `pip show caty-gateway` or `uv tool list`
