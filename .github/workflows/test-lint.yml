@@ -8,8 +8,12 @@ jobs:
     uses: caty-ai/family-dev-handbook/.github/workflows/reusable-test-lint.yml@ci-v1
     permissions: {contents: read}
     with:
-      run_macos: false
-      macos_skip_reason: 'private repo: hosted macOS runners bill 10x; re-enable at public flip (child 3)'
+      # hosted macOS runners bill 10x on a private repo; the lane turns on by itself once the repo is public.
+      run_macos: ${{ !github.event.repository.private }}
+      macos_skip_reason: 'private repo: hosted macOS runners bill 10x; the macOS lane runs automatically once the repository is public'
       pre_test_setup_ubuntu: |
         sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+        python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/python" -m pip install -q -e '.[test]' && echo "PYTHON=$RUNNER_TEMP/venv/bin/python" >> "$GITHUB_ENV"
+      pre_test_setup_macos: |
+        brew install -q ffmpeg
         python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/python" -m pip install -q -e '.[test]' && echo "PYTHON=$RUNNER_TEMP/venv/bin/python" >> "$GITHUB_ENV"
