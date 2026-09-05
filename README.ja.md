@@ -191,7 +191,7 @@ caty-gateway setup --member me --backend claude
 
 **4. QR を読む**
 
-CatyPhone を開き、表示された QR コードを読み取ります。iPhone とパソコンがつながり、話しかけられるようになります。QR は 10 分で期限が切れ、一度読むと使えなくなります。もう一度出すには、サービスと同じ環境変数で `caty-gateway qr` を実行します（手順は [QR の再発行](docs/engineering.md#reissue-qr)）。
+CatyPhone を開き、表示された QR コードを読み取ります。iPhone とパソコンがつながり、話しかけられるようになります。QR は 10 分で期限が切れ、一度読むと使えなくなります。もう一度出すには `caty-gateway qr --member <id>` を実行します（手順は [QR の再発行](docs/engineering.md#reissue-qr)）。
 
 <details>
 <summary>つまずいたとき（command not found・uv や pipx が無い・Python が古い）</summary>
