@@ -82,3 +82,15 @@ def test_public_secret_without_private_file(tmp_path):
     assert result.returncode == 1
     assert result.stdout.count(ABSENT) == 1
     assert f"secret-prefix: scratch.txt:1: {token}" in result.stdout
+
+
+def test_malformed_private_file_fails_closed_without_echo(tmp_path):
+    (tmp_path / "scratch.txt").write_text("ordinary text\n", encoding="utf-8")
+    private = tmp_path.parent / "private-malformed.txt"
+    private.write_text("secret-entry-before-header\n[names]\nzzz-private-name\n", encoding="utf-8")
+    result = audit(tmp_path, private_file=private)
+    assert result.returncode == 2
+    assert "invalid private list" in result.stderr
+    assert "secret-entry-before-header" not in result.stdout + result.stderr
+    assert "zzz-private-name" not in result.stdout + result.stderr
+    assert ABSENT not in result.stdout

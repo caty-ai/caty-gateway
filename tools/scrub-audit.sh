@@ -27,7 +27,8 @@ allowlist_path = root / ".scrub-allow"
 try:
     allowlist_lines = allowlist_path.read_text(encoding="utf-8").splitlines()
 except OSError as error:
-    print(f"scrub-audit: cannot read {allowlist_path}: {error}", file=sys.stderr)
+    # printed before the private list exists, so name the file, not its absolute path
+    print(f"scrub-audit: cannot read {allowlist_path.name}: {error.__class__.__name__}", file=sys.stderr)
     raise SystemExit(2)
 
 global_allow_patterns = []
