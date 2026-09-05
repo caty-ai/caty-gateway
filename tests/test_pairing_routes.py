@@ -161,7 +161,7 @@ class PairingRoutesTest(unittest.TestCase):
                 mock.patch.object(cg, "ThreadingHTTPServer", return_value=fake_server), \
                 mock.patch.object(cg, "report_content_logging_mode"), \
                 mock.patch.object(cg, "load_fillers"), \
-                mock.patch.dict(os.environ, {"CATY_REQUIRE_AUTH": "0"}), \
+                mock.patch.dict(os.environ, {"CATY_REQUIRE_AUTH": "0", "CATY_GATEWAY_BIND": "127.0.0.1"}), \
                 redirect_stdout(io.StringIO()) as stdout:
             cg.main()
         output = stdout.getvalue()
@@ -197,6 +197,7 @@ class PairingRoutesTest(unittest.TestCase):
                 mock.patch.object(cg, "ThreadingHTTPServer", return_value=fake_server), \
                 mock.patch.object(cg, "report_content_logging_mode"), \
                 mock.patch.object(cg, "load_fillers"), \
+                mock.patch.dict(os.environ, {"CATY_GATEWAY_BIND": "127.0.0.1"}), \
                 redirect_stdout(io.StringIO()) as startup_stdout:
             cg.main()
         self.assertIn("CATY_TOKEN is whitespace only", startup_stdout.getvalue())

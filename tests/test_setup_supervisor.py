@@ -44,6 +44,7 @@ def _supervisor(tmp_path: pathlib.Path, manifest: pathlib.Path, orchestrator: pa
     env = dict(os.environ)
     if extra_env:
         env.update(extra_env)
+    env["PYTHONPATH"] = str(orchestrator.parent) + os.pathsep + env.get("PYTHONPATH", "")
     supervisor = setup_supervisor.Supervisor(
         [
             "--member", "alice",
@@ -52,7 +53,7 @@ def _supervisor(tmp_path: pathlib.Path, manifest: pathlib.Path, orchestrator: pa
             "--probe-url", "http://127.0.0.1:18789",
             "--backup-manifest", str(manifest),
             "--status-file", str(status),
-            "--orchestrator", str(orchestrator),
+            "--orchestrator", orchestrator.stem,
             "--python", sys.executable,
             "--timeout", "1",
             "--resume-timeout", "5",

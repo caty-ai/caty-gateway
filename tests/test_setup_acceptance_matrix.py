@@ -21,11 +21,13 @@ import pytest
 
 from caty_gateway import caty_gateway
 from caty_gateway import pairing_store
+from caty_gateway.doctor import Doctor
+from functools import partial
 from caty_gateway import setup_orchestrator
 
 
 OS_VALUES = ("Linux", "macOS")
-BACKENDS = ("openclaw", "hermes", "claude")
+BACKENDS = ("openclaw", "hermes", "claude", "codex", "openai-compat")
 DELIVERIES = ("local/tty", "remote-chat/url")
 PRECONDITIONS = ("clean", "collision", "interrupted-resume")
 FULL_MATRIX = tuple(itertools.product(OS_VALUES, BACKENDS, DELIVERIES, PRECONDITIONS))
@@ -235,59 +237,24 @@ def _prepare_fake_commands(workdir):
         """
         #!/usr/bin/env sh
         if [ "$1" = "status" ]; then exit 0; fi
-        if [ "$1" = "ip" ]; then echo "100.1.1.1"; exit 0; fi
+        if [ "$1" = "ip" ]; then echo "100.64.0.1"; exit 0; fi
         exit 1
         """,
     )
-    for command in ("systemctl", "loginctl", "ffmpeg", "openclaw", "hermes", "claude", "launchctl"):
-        _write_exec(bin_dir / command, "#!/usr/bin/env sh\nexit 0\n")
+    for command in ("systemctl", "loginctl", "ffmpeg", "ffprobe", "openclaw", "hermes", "claude", "codex", "launchctl"):
+        _write_exec(bin_dir / command, "#!/usr/bin/env sh\necho main\n")
     _write_exec(bin_dir / "journalctl", "#!/usr/bin/env sh\necho journal line\n")
     return bin_dir
 
 
 def _prepare_fake_gateway_files(workdir):
-    _write_exec(
-        workdir / "install-member-service-systemd.sh",
-        """
-        #!/usr/bin/env sh
-        set -eu
-        while [ "${1:-}" = "--yes" ] || [ "${1:-}" = "--dry-run" ]; do shift; done
-        member="$1"
-        env_path="$HOME/.config/caty-gateway/$member.env"
-        mkdir -p "$(dirname "$env_path")"
-        printf 'CATY_GATEWAY_PORT=%s\n' "$PORT" > "$env_path"
-        printf 'CATY_ID=%s\n' "$MEMBER_ID" >> "$env_path"
-        printf 'CATY_TOKEN=%s\n' "$TOKEN" >> "$env_path"
-        printf 'install\n' >> "$WORKDIR/installer-invocations.log"
-        """,
-    )
-    _write_exec(
-        workdir / "install-member-service.sh",
-        """
-        #!/usr/bin/env sh
-        set -eu
-        mkdir -p "$HOME/Library/LaunchAgents"
-        printf '%s' "$PLIST_CONTENT" > "$HOME/Library/LaunchAgents/ai.caty.gateway.$MEMBER_ID.plist"
-        """,
-    )
-    _write_exec(
-        workdir / "caty_gateway.py",
-        """
-        #!/usr/bin/env python3
-        import sys
-        if len(sys.argv) > 1 and sys.argv[1] == "qr":
-            print("QR URL: http://100.1.1.1:49152/qr/test")
-        """,
-    )
-    package_root = workdir / "fake_pyqrcode" / "qrcode"
-    package_root.mkdir(parents=True, exist_ok=True)
-    (package_root / "__init__.py").write_text("VERSION = 'stub'\n", encoding="utf-8")
-    template = workdir / "systemd" / "caty-gateway.service.template"
-    template.parent.mkdir(parents=True, exist_ok=True)
-    template.write_text(
-        "[Service]\nWorkingDirectory=__WORKDIR__\nEnvironment=HOME=%h\n"
-        "EnvironmentFile=%h/.config/caty-gateway/%i.env\n"
-        "ExecStart=__PYTHON__ __WORKDIR__/caty_gateway.py\n",
+    # Child commands exercise module dispatch with a deliberately fake package.
+    package_root = workdir / "fake_pyqrcode"
+    for package in ("qrcode", "caty_gateway"):
+        (package_root / package).mkdir(parents=True, exist_ok=True)
+        (package_root / package / "__init__.py").write_text("", encoding="utf-8")
+    (package_root / "caty_gateway" / "__main__.py").write_text(
+        "import sys\nif sys.argv[1:2] == ['qr']: print('QR URL: http://100.64.0.1:49152/qr/test')\n",
         encoding="utf-8",
     )
 
@@ -303,6 +270,10 @@ def _make_orchestrator(fake_home_dir, workdir, monkeypatch, *argv, system="Linux
         "XDG_RUNTIME_DIR": str(fake_home_dir / "xdg-runtime"),
         "CATY_BACKEND": "openclaw",
     }
+    env.update({"CATY_GATEWAY_TOKEN": "fake-gateway-token", "CATY_OPENAI_BASE_URL": "http://127.0.0.1:1234/v1",
+                "CATY_OPENAI_MODEL": "fake-model"})
+    monkeypatch.setattr(setup_orchestrator, "Doctor", partial(Doctor, port_available=lambda port: True,
+        get_json=lambda url, headers, timeout: (200, {"data": [{"id": "fake-model"}]})))
     if extra_env:
         env.update(extra_env)
     monkeypatch.setattr(setup_orchestrator.platform, "system", lambda: system)
@@ -379,14 +350,14 @@ def test_every_nominal_matrix_cell_is_explicitly_classified(cell, status, reason
 def test_degraded_cell_list_exactly_equals_full_matrix_minus_executed_cells():
     assert set(DEGRADED_CELLS) == set(FULL_MATRIX) - EXECUTED_CELLS
     assert set(DEGRADED_CELLS).isdisjoint(EXECUTED_CELLS)
-    assert len(FULL_MATRIX) == 36
+    assert len(FULL_MATRIX) == 60
     assert len(EXECUTED_CELLS) == 3
-    assert len(DEGRADED_CELLS) == 33
+    assert len(DEGRADED_CELLS) == 57
 
 
 def test_acceptance_matrix_is_complete_and_code_owned():
-    assert len(FULL_MATRIX) == 36
-    assert {cell[1] for cell in FULL_MATRIX} == {"openclaw", "hermes", "claude"}
+    assert len(FULL_MATRIX) == 60
+    assert {cell[1] for cell in FULL_MATRIX} == {"openclaw", "hermes", "claude", "codex", "openai-compat"}
     assert set(DEGRADED_CELLS) == set(FULL_MATRIX) - EXECUTED_CELLS
 
 
@@ -419,7 +390,7 @@ def test_clean_linux_hermes_remote_chat_completes_all_phases_with_one_visible_qr
         "--port",
         str(port),
         "--public-url",
-        f"http://100.1.1.1:{port}",
+        f"http://100.64.0.1:{port}",
         "--qr-delivery",
         "url",
         system="Linux",
@@ -459,7 +430,7 @@ def test_clean_linux_hermes_remote_chat_completes_all_phases_with_one_visible_qr
     elapsed = time.monotonic() - start
     captured = capfd.readouterr().out
     assert tuple(orchestrator.state.completed_phases) == setup_orchestrator.PHASES
-    assert "QR URL: http://100.1.1.1:49152/qr/test" in captured
+    assert "QR URL: http://100.64.0.1:49152/qr/test" in captured
     assert elapsed < 600
     assert prompt_reads == []
     assert len(handoffs) <= 1
@@ -498,7 +469,7 @@ def test_collision_macos_openclaw_local_aborts_before_side_effect_and_preserves_
         "--port",
         str(port),
         "--public-url",
-        f"http://100.1.1.1:{port}",
+        f"http://100.64.0.1:{port}",
         "--qr-delivery",
         "tty",
         system="Darwin",
@@ -535,7 +506,7 @@ def test_interrupted_resume_linux_claude_local_reuses_token_and_artifact_then_fi
         "--port",
         str(port),
         "--public-url",
-        f"http://100.1.1.1:{port}",
+        f"http://100.64.0.1:{port}",
         "--qr-delivery",
         "tty",
         extra_env={"CATY_CLAUDE_BIN": str(tmp_path / "fakebin" / "claude")},
@@ -559,7 +530,7 @@ def test_interrupted_resume_linux_claude_local_reuses_token_and_artifact_then_fi
         "--port",
         str(port),
         "--public-url",
-        f"http://100.1.1.1:{port}",
+        f"http://100.64.0.1:{port}",
         "--qr-delivery",
         "tty",
         extra_env={"CATY_CLAUDE_BIN": str(tmp_path / "fakebin" / "claude")},
@@ -571,7 +542,7 @@ def test_interrupted_resume_linux_claude_local_reuses_token_and_artifact_then_fi
     assert tuple(second.state.completed_phases) == setup_orchestrator.PHASES
     assert (artifact.read_bytes(), artifact.stat().st_mtime_ns) == artifact_before
     assert generated == [24]
-    assert (tmp_path / "installer-invocations.log").read_text(encoding="utf-8").splitlines() == ["install"]
+    assert (fake_home / ".config/systemd/user" / second.service_name).read_bytes() == second._expected_systemd_unit()
     assert not second.state_path.exists()
 
 
@@ -606,7 +577,7 @@ def test_collision_and_self_interrupt_have_distinguishable_acceptance_outcomes(
         "--port",
         str(collision_port),
         "--public-url",
-        f"http://100.1.1.1:{collision_port}",
+        f"http://100.64.0.1:{collision_port}",
         system="Darwin",
     )
     collision_result = None
@@ -633,7 +604,7 @@ def test_collision_and_self_interrupt_have_distinguishable_acceptance_outcomes(
         "--port",
         str(resume_port),
         "--public-url",
-        f"http://100.1.1.1:{resume_port}",
+        f"http://100.64.0.1:{resume_port}",
     )
     interrupted._health = lambda: (_ for _ in ()).throw(setup_orchestrator.SetupError("interrupted"))
     interrupted._identity = lambda: None
@@ -649,7 +620,7 @@ def test_collision_and_self_interrupt_have_distinguishable_acceptance_outcomes(
         "--port",
         str(resume_port),
         "--public-url",
-        f"http://100.1.1.1:{resume_port}",
+        f"http://100.64.0.1:{resume_port}",
     )
     resumed._health = lambda: None
     resumed._identity = lambda: None
@@ -840,7 +811,7 @@ def test_two_way_secret_redaction_canary_covers_both_redactors_and_all_managed_s
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orchestrator._update_status(state="running", timeline_entry=evidence_line)
     status_surface = orchestrator.status_path.read_text(encoding="utf-8")
@@ -857,3 +828,15 @@ def test_two_way_secret_redaction_canary_covers_both_redactors_and_all_managed_s
     assert f"stage=pairing status=pairing_invalid pid={pid}" in all_surfaces
     assert "QR URL: http://127.0.0.1:49152/qr/" in captured
     assert delivery_server.closed is True
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_all_release_backends_pass_passive_setup_plan(fake_home, tmp_path, monkeypatch, backend):
+    orchestrator = _make_orchestrator(fake_home, tmp_path, monkeypatch,
+        "--backend", backend, "--yes", "--plan-only", "--port", str(_free_ephemeral_port()),
+        "--public-url", "http://127.0.0.1:8788",
+        extra_env={"CATY_HERMES_API_KEY": "fake-hermes-key"})
+    assert orchestrator.run() == 0
+    assert orchestrator.config["backend"] == backend
+    assert not orchestrator.state_path.exists()
+    assert not orchestrator.artifact_path.exists()

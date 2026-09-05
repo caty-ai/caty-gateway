@@ -8,7 +8,7 @@ Type=simple
 WorkingDirectory=__WORKDIR__
 # Mirror the launchd PATH so OPENCLAW_BIN/FFMPEG_BIN resolve without an override.
 # The user manager's inherited PATH often omits ~/.local/bin and /usr/local/bin.
-# The installer's render_unit sed rewrites %h to an absolute home at install time,
+# Package rendering substitutes the member home at install time,
 # so this stays valid regardless of user-manager PATH quirks.
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=%h/.config/caty-gateway/%i.env

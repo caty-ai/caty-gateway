@@ -4,6 +4,8 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
+from contextlib import ExitStack
 
 
 from caty_gateway import caty_gateway as cg
@@ -68,7 +70,8 @@ class RequireAuthTest(unittest.TestCase):
     def auth_headers(self, token="member-token"):
         return {"X-Caty-Token": token}
 
-    def test_flag_off_empty_token_keeps_allow_all_reads(self):
+    def test_loopback_empty_token_keeps_allow_all_reads(self):
+        os.environ["CATY_GATEWAY_BIND"] = "127.0.0.1"
         status, _, body = self.request("GET", "/health")
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["ok"], True)
@@ -76,6 +79,35 @@ class RequireAuthTest(unittest.TestCase):
         status, _, body = self.request("GET", "/history")
         self.assertEqual(status, 200)
         self.assertIn("sessions", json.loads(body))
+
+    def test_nonloopback_empty_token_refuses_before_any_startup(self):
+        for host in ("0.0.0.0", "::", "192.0.2.1", "example.invalid"):
+            for token in ("", " \t "):
+                os.environ["CATY_GATEWAY_BIND"] = host
+                cg.CATY_TOKEN = token
+                with mock.patch.object(cg, "ThreadingHTTPServer") as server, \
+                        mock.patch.object(cg, "load_fillers") as fillers, \
+                        mock.patch.object(cg, "_get_pairing_config") as pairing:
+                    with self.assertRaises(SystemExit) as result:
+                        cg.main(["serve"])
+                    self.assertEqual(result.exception.code, 2)
+                    server.assert_not_called()
+                    fillers.assert_not_called()
+                    pairing.assert_not_called()
+
+    def test_loopback_empty_token_starts_server(self):
+        for host in ("127.0.0.1", "::1", "localhost"):
+            os.environ["CATY_GATEWAY_BIND"] = host
+            with ExitStack() as stack:
+                server = stack.enter_context(mock.patch.object(cg, "ThreadingHTTPServer"))
+                stack.enter_context(mock.patch.object(cg, "load_fillers"))
+                stack.enter_context(mock.patch.object(cg, "report_content_logging_mode"))
+                stack.enter_context(mock.patch.object(cg, "_get_pairing_store"))
+                stack.enter_context(mock.patch.object(cg, "_get_neutral_voice_readiness"))
+                stack.enter_context(mock.patch.object(cg.share_store, "cleanup_claimed_orphans"))
+                cg.main([])
+                server.assert_called_once_with((host, cg.PORT), cg.Handler)
+                server.return_value.serve_forever.assert_called_once_with()
 
     def test_flag_off_configured_token_still_requires_header(self):
         cg.CATY_TOKEN = "member-token"
