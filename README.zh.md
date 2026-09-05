@@ -51,12 +51,12 @@ caty-gateway 只在你专属的私有网络内部，把电脑上的 AI 和 iPhon
 
 ```mermaid
 flowchart LR
-    phone["📱 CatyPhone<br/>（iPhone）"]
+    phone["CatyPhone<br/>（iPhone）"]
     subgraph tailnet["你专属的私有网络（Tailscale）"]
         gw["caty-gateway<br/>（在你的电脑上常驻运行）"]
     end
-    ai["🧠 平时用的 AI<br/>Claude Code / Codex CLI / OpenClaw<br/>Hermes / Ollama / LM Studio"]
-    phone <-- "语音・照片・屏幕" --> gw
+    ai["平时用的 AI<br/>Claude Code / Codex CLI / OpenClaw<br/>Hermes / Ollama / LM Studio"]
+    phone <-- "语音、照片、屏幕" --> gw
     gw <-- "通过平时用的 CLI" --> ai
 ```
 
@@ -76,7 +76,7 @@ flowchart LR
 
   iPhone 与电脑之间的通信，只经过 Tailscale 的私有网络。对话记录也保存在你自己的电脑上。
 
-要让它运行起来，只需要 3 样东西。
+电脑这一侧只需要准备 3 样东西。
 
 ---
 
@@ -161,37 +161,45 @@ uv tool install caty-gateway
 caty-gateway doctor --backend claude
 ```
 
-把 `claude` 替换成上表中对应的 `--backend` 值。全部显示 `PASS` 就说明准备就绪。出现 `FAIL` 的那一行会附带修复方法。
+把 `claude` 替换成上表中对应的 `--backend` 值。只剩 `PASS` 和 `WARN` 就说明准备就绪。出现 `FAIL` 的那一行会附带修复方法。`WARN` 表示「仅靠查看无法确认」的项目，只要那个 AI 平时能正常使用就可以继续。
 
 ```text
 PASS OS
 PASS Python
 PASS ffmpeg
+PASS ffprobe
+PASS tailscale executable
 PASS tailscale login
 PASS tailscale IPv4
 PASS port
+PASS public URL
+PASS config directory
+PASS state directory
+PASS data directory
 PASS claude version
+PASS claude working directory
 PASS claude credentials
 ```
 
 **3. 设置**
 
 ```sh
-caty-gateway setup --member <你的名字> --backend claude
+caty-gateway setup --member me --backend claude
 ```
 
-`<你的名字>` 是一个简短的英数字名称（例如 `me`）。这会创建一个每次电脑启动都会运行的常驻服务，最后会显示一个二维码。如果想先看看会执行什么，可以加上 `--plan-only`，它只会列出计划执行的内容，不会做任何改动。
+把 `me` 换成代表你自己的简短英数字名称（直接保留 `me` 也可以）。这会创建一个每次电脑启动都会运行的常驻服务，最后会显示一个二维码。如果想先看看会执行什么，可以加上 `--plan-only`，它只会列出计划执行的内容，不会做任何改动。
 
 **4. 扫描二维码**
 
-打开 CatyPhone，扫描显示出来的二维码。这样 iPhone 和电脑就连接上了，可以开始用语音对话。二维码 10 分钟后会失效，扫过一次也就不能再用。想重新显示，执行 `caty-gateway qr` 即可。
+打开 CatyPhone，扫描显示出来的二维码。这样 iPhone 和电脑就连接上了，可以开始用语音对话。二维码 10 分钟后会失效，扫过一次也就不能再用。想重新显示，请在与服务相同的环境变量下执行 `caty-gateway qr`（步骤见 [重新生成二维码](docs/engineering.md#reissue-qr)）。
 
 <details>
-<summary>遇到问题时（提示 command not found・没有 uv 或 pipx・Python 版本太旧）</summary>
+<summary>遇到问题时（提示 command not found、没有 uv 或 pipx、Python 版本太旧）</summary>
 
 - **`caty-gateway: command not found`** — 请重新打开终端。如果 `uv tool install` 提示过关于 PATH 的说明，先执行那一行。
 - **`uv` 和 `pipx` 都没有** — 任选其一安装即可。uv: [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) ／ pipx: [pipx.pypa.io](https://pipx.pypa.io/stable/installation/)。
 - **Python 版本低于 3.10** — 可以像 `uv tool install --python 3.12 caty-gateway` 这样，把 Python 的准备工作也交给 uv 处理。
+- **找不到软件包（`No solution found` 等）** — 在发布到 PyPI 之前，可以直接从 GitHub 安装：`uv tool install --from git+https://github.com/caty-ai/caty-gateway caty-gateway`
 - **什么是终端** — macOS 上是「终端.app」，Linux 上是终端应用。把上面的命令逐行粘贴进去，按 Enter 执行。
 
 </details>
@@ -206,11 +214,25 @@ caty-gateway setup --member <你的名字> --backend claude
 
 caty-gateway 只负责「入口」这一件事，不会对 AI 或对话做任何多余的操作。
 
-- **不改动 AI 的设置** — 对 Claude Code 等 AI，只是像平时一样调用 CLI 与其对话，不会改写工作目录或配置文件
-- **检查只是查看** — `doctor` 只确认版本和登录状态，不会向 AI 发送提示词（不消耗使用额度）
-- **无法从私有网络之外进入** — 配对请求只接受来自 Tailscale 网络内部，或电脑自身发起的连接
-- **二维码中不含长期密钥** — 二维码里只有一个 10 分钟后失效的一次性口令，真正的密钥会在扫描之后另行传递
-- **记录保存在你自己的电脑上** — 对话记录存放在 `~/.local/state/caty-gateway/history/<名字>/`，删除该文件夹即可清除
+- **不改动 AI 的设置**
+
+  对 Claude Code 等 AI，只是像平时一样调用 CLI 与其对话，不会改写工作目录或配置文件
+
+- **检查只是查看**
+
+  `doctor` 只确认版本和登录状态，不会向 AI 发送提示词（不消耗使用额度）
+
+- **无法从私有网络之外进入**
+
+  配对请求只接受来自 Tailscale 网络内部，或电脑自身发起的连接
+
+- **二维码中不含长期密钥**
+
+  二维码里只有一个 10 分钟后失效的一次性口令，真正的密钥会在扫描之后另行传递
+
+- **记录保存在你自己的电脑上**
+
+  对话记录存放在 `~/.local/state/caty-gateway/history/<名字>/`，删除该文件夹即可清除
 
 会被发送到外部的内容，只有在你**自己主动开启语音朗读、头像生成等可选功能时**才会产生。哪些功能会发送什么内容，写在[隐私说明](docs/privacy.md)里。
 
@@ -243,16 +265,16 @@ AI 那一侧不会留下任何痕迹。
 </details>
 
 <details>
-<summary>`FAIL port`（`port 8788 is already listening`）</summary>
+<summary>`FAIL port`（doctor）／ `port … is already listening`（setup）</summary>
 
 同一个端口号被其他程序占用了。用 `--port 8811` 这样的方式指定一个空闲端口，再执行 `doctor` 和 `setup`。
 
 </details>
 
 <details>
-<summary>`FAIL claude version` ／ `FAIL claude credentials`（找不到 backend）</summary>
+<summary>`FAIL claude version` ／ `WARN claude credentials`（找不到 backend，或无法确认登录）</summary>
 
-说明对应 AI 的 CLI 没有安装，或者没有登录。请在终端中先启动一次该 CLI 并完成登录，再重新执行 `doctor`。如果是 Ollama 或 LM Studio，需要先启动服务器，再把 `CATY_OPENAI_BASE_URL` 设置为类似 `http://127.0.0.1:11434/v1` 这样的地址。
+说明对应 AI 的 CLI 没有安装，或者没有登录。当登录信息保存在系统钥匙串中、`doctor` 无法读取时，也会显示 `WARN claude credentials`；如果终端里的 `claude` 能正常使用，可以直接继续。请在终端中先启动一次该 CLI 并完成登录，再重新执行 `doctor`。如果是 Ollama 或 LM Studio，需要先启动服务器，再把 `CATY_OPENAI_BASE_URL` 设置为类似 `http://127.0.0.1:11434/v1` 这样的地址。
 
 </details>
 
@@ -266,7 +288,7 @@ AI 那一侧不会留下任何痕迹。
 <details>
 <summary>扫描二维码后提示「已过期」</summary>
 
-二维码从显示起 10 分钟后就会失效。请用 `caty-gateway qr` 重新生成。
+二维码从显示起 10 分钟后就会失效。请按 [重新生成二维码](docs/engineering.md#reissue-qr) 的步骤重新生成。
 
 </details>
 
@@ -278,12 +300,12 @@ AI 那一侧不会留下任何痕迹。
 
 ## 了解更多
 
-按读者需求分成了不同页面。
+按读者需求分成了不同页面。链接指向英文版，每页顶部都有日文版的链接。
 
 | 想了解的内容 | 页面 |
 |---|---|
-| 工作机制・命令一览・服务运维・卸载方法 | [面向工程师的文档](docs/engineering.md) |
-| 全部命令的参数・保存位置・配对规则 | [详细规格](docs/reference.md) |
+| 工作机制、命令一览、服务运维、卸载方法 | [面向工程师的文档](docs/engineering.md) |
+| 全部命令的参数、保存位置、配对规则 | [详细规格](docs/reference.md) |
 | 环境变量完整表（自动生成） | [docs/env.md](docs/env.md) |
 | 哪些功能会向外部发送什么内容 | [docs/privacy.md](docs/privacy.md) |
 | 配对通信规格 | [docs/contracts/pairing-v1.md](docs/contracts/pairing-v1.md) |
@@ -298,7 +320,7 @@ AI 那一侧不会留下任何痕迹。
 
 要加入自己正在使用的 AI，只需添加一个预设配置即可开始。
 
-具体步骤・测试规范・审核流程，见 [CONTRIBUTING.md](CONTRIBUTING.md)。有 bug 或疑问，请前往 [Issue](https://github.com/caty-ai/caty-gateway/issues)。
+具体步骤、测试规范、审核流程，见 [CONTRIBUTING.md](CONTRIBUTING.md)。有 bug 或疑问，请前往 [Issue](https://github.com/caty-ai/caty-gateway/issues)。
 
 ---
 

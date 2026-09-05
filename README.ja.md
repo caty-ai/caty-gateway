@@ -51,11 +51,11 @@ caty-gateway は、その入口だけを引き受けます。
 
 ```mermaid
 flowchart LR
-    phone["📱 CatyPhone<br/>（iPhone）"]
+    phone["CatyPhone<br/>（iPhone）"]
     subgraph tailnet["あなた専用の私設ネットワーク（Tailscale）"]
         gw["caty-gateway<br/>（あなたのパソコンで常駐）"]
     end
-    ai["🧠 いつもの AI<br/>Claude Code / Codex CLI / OpenClaw<br/>Hermes / Ollama / LM Studio"]
+    ai["いつもの AI<br/>Claude Code / Codex CLI / OpenClaw<br/>Hermes / Ollama / LM Studio"]
     phone <-- "声・写真・画面" --> gw
     gw <-- "いつもの CLI 経由" --> ai
 ```
@@ -76,7 +76,7 @@ flowchart LR
 
   iPhone とパソコンの通信は Tailscale の私設ネットワークの中だけ。会話の記録もあなたのパソコンに置かれます。
 
-動かすために必要なものは 3 つだけです。
+パソコン側に必要なものは 3 つだけです。
 
 ---
 
@@ -161,30 +161,37 @@ uv tool install caty-gateway
 caty-gateway doctor --backend claude
 ```
 
-`claude` の部分は、上の表の `--backend` の値に置き換えます。すべて `PASS` になれば準備完了です。`FAIL` の行には直し方が一緒に出ます。
+`claude` の部分は、上の表の `--backend` の値に置き換えます。`PASS` と `WARN` だけになれば準備完了です。`FAIL` の行には直し方が一緒に出ます。`WARN` は「見るだけでは確認できなかった」項目で、その AI が普段どおり動いていれば先に進めます。
 
 ```text
 PASS OS
 PASS Python
 PASS ffmpeg
+PASS ffprobe
+PASS tailscale executable
 PASS tailscale login
 PASS tailscale IPv4
 PASS port
+PASS public URL
+PASS config directory
+PASS state directory
+PASS data directory
 PASS claude version
+PASS claude working directory
 PASS claude credentials
 ```
 
 **3. 設定する**
 
 ```sh
-caty-gateway setup --member <あなたの名前> --backend claude
+caty-gateway setup --member me --backend claude
 ```
 
-`<あなたの名前>` は英数字の短い名前（例: `me`）です。パソコンが起動するたびに動く常駐サービスが作られ、最後に QR コードが表示されます。先に中身だけ見たいときは `--plan-only` を付けると、何も書き換えずに実行予定が一覧で出ます。
+`me` の部分は、あなたを表す英数字の短い名前に置き換えます（そのまま `me` でも構いません）。パソコンが起動するたびに動く常駐サービスが作られ、最後に QR コードが表示されます。先に中身だけ見たいときは `--plan-only` を付けると、何も書き換えずに実行予定が一覧で出ます。
 
 **4. QR を読む**
 
-CatyPhone を開き、表示された QR コードを読み取ります。iPhone とパソコンがつながり、話しかけられるようになります。QR は 10 分で期限が切れ、一度読むと使えなくなります。もう一度出すには `caty-gateway qr` です。
+CatyPhone を開き、表示された QR コードを読み取ります。iPhone とパソコンがつながり、話しかけられるようになります。QR は 10 分で期限が切れ、一度読むと使えなくなります。もう一度出すには、サービスと同じ環境変数で `caty-gateway qr` を実行します（手順は [QR の再発行](docs/engineering.md#reissue-qr)）。
 
 <details>
 <summary>つまずいたとき（command not found・uv や pipx が無い・Python が古い）</summary>
@@ -192,6 +199,7 @@ CatyPhone を開き、表示された QR コードを読み取ります。iPhone
 - **`caty-gateway: command not found`** — ターミナルを開き直してください。`uv tool install` が PATH の案内を出していたら、その 1 行を先に実行します。
 - **`uv` も `pipx` も無い** — どちらか 1 つを入れます。uv: [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) ／ pipx: [pipx.pypa.io](https://pipx.pypa.io/stable/installation/)。
 - **Python が 3.10 より古い** — `uv tool install --python 3.12 caty-gateway` のように、uv に Python の用意も任せられます。
+- **パッケージが見つからない（`No solution found` など）** — PyPI に公開される前の期間は、GitHub から直接入れられます: `uv tool install --from git+https://github.com/caty-ai/caty-gateway caty-gateway`
 - **ターミナルとは** — macOS は「ターミナル.app」、Linux は端末アプリです。上のコマンドを 1 行ずつ貼って Enter を押します。
 
 </details>
@@ -206,11 +214,25 @@ CatyPhone を開き、表示された QR コードを読み取ります。iPhone
 
 caty-gateway は「入口」だけを担当し、AI にも会話にも余計なことをしません。
 
-- **AI の設定を変えない** — Claude Code などには、ふだんと同じ CLI を呼んで話しかけるだけです。作業フォルダも設定ファイルも書き換えません
-- **点検は見るだけ** — `doctor` はバージョンやログイン状態を確認するだけで、AI にプロンプトを送りません（利用枠を消費しません）
-- **私設ネットワークの外から入れない** — ペアリングの受付は、Tailscale のネットワーク内か、パソコン自身からの接続だけです
-- **QR に長期の鍵は載らない** — QR には 10 分で切れる 1 回きりの合言葉だけが入り、本当の鍵は読み取り後に別途渡されます
-- **記録はあなたのパソコンに** — 会話の記録は `~/.local/state/caty-gateway/history/<名前>/` に置かれ、フォルダを消せば消えます
+- **AI の設定を変えない**
+
+  Claude Code などには、ふだんと同じ CLI を呼んで話しかけるだけです。作業フォルダも設定ファイルも書き換えません
+
+- **点検は見るだけ**
+
+  `doctor` はバージョンやログイン状態を確認するだけで、AI にプロンプトを送りません（利用枠を消費しません）
+
+- **私設ネットワークの外から入れない**
+
+  ペアリングの受付は、Tailscale のネットワーク内か、パソコン自身からの接続だけです
+
+- **QR に長期の鍵は載らない**
+
+  QR には 10 分で切れる 1 回きりの合言葉だけが入り、本当の鍵は読み取り後に別途渡されます
+
+- **記録はあなたのパソコンに**
+
+  会話の記録は `~/.local/state/caty-gateway/history/<名前>/` に置かれ、フォルダを消せば消えます
 
 外部に送られるものは、音声の読み上げやアバター生成などの**任意機能を自分で有効にしたときだけ**です。どの機能が何を送るかは [プライバシー](docs/privacy.md) に書いてあります。
 
@@ -243,16 +265,16 @@ AI 側には何も残りません。
 </details>
 
 <details>
-<summary>`FAIL port`（`port 8788 is already listening`）</summary>
+<summary>`FAIL port`（doctor）／ `port … is already listening`（setup）</summary>
 
 同じポート番号を別のプログラムが使っています。`--port 8811` のように空いている番号を指定して `doctor` と `setup` を実行します。
 
 </details>
 
 <details>
-<summary>`FAIL claude version` ／ `FAIL claude credentials`（backend が見つからない）</summary>
+<summary>`FAIL claude version` ／ `WARN claude credentials`（backend が見つからない・ログインを確認できない）</summary>
 
-その AI の CLI が入っていないか、ログインしていません。ターミナルで一度その CLI を起動してログインしてから、`doctor` をやり直します。Ollama や LM Studio の場合は、サーバーを起動してから `CATY_OPENAI_BASE_URL` に `http://127.0.0.1:11434/v1` のような URL を設定します。
+その AI の CLI が入っていないか、ログインしていません。`WARN claude credentials` は、ログイン情報が OS のキーチェーンにあって外から見えない場合にも出ます。ターミナルで `claude` が普段どおり動くなら、そのまま進めて構いません。ターミナルで一度その CLI を起動してログインしてから、`doctor` をやり直します。Ollama や LM Studio の場合は、サーバーを起動してから `CATY_OPENAI_BASE_URL` に `http://127.0.0.1:11434/v1` のような URL を設定します。
 
 </details>
 
@@ -266,7 +288,7 @@ iPhone がパソコンと同じ Tailscale ネットワークにいないこと�
 <details>
 <summary>QR を読んだら「期限切れ」と出た</summary>
 
-QR は表示から 10 分で切れます。`caty-gateway qr` で出し直してください。
+QR は表示から 10 分で切れます。[QR の再発行](docs/engineering.md#reissue-qr) の手順で出し直してください。
 
 </details>
 

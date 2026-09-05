@@ -46,7 +46,7 @@ caty-gateway setup --member MEMBER [--backend BACKEND] [--port PORT] [--name NAM
 | `serve` | フォアグラウンド起動。`CATY_GATEWAY_BIND` が loopback 以外で `CATY_TOKEN` が空なら起動前に終了 |
 | `qr [--qr-delivery {auto,tty,url}] [--wait-visible-seconds N]` | ペアリング QR の再発行 |
 | `push open-url URL --title T [--audience A] [--session S] [--key K]` / `push media URL --title T …` | 接続中クライアントへのイベント送出。`--title` は必須。`CATY_TOKEN` は環境変数で渡す |
-| `doctor --backend BACKEND [--port PORT] [--public-url URL]` | 受動 preflight。`--probe` は予約済み（このリリースでは FAIL を返す） |
+| `doctor --backend BACKEND [--member MEMBER] [--port PORT] [--public-url URL]` | 受動 preflight。`--probe` は予約済み（このリリースでは FAIL を返す） |
 
 ### doctor の項目
 

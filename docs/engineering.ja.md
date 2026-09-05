@@ -44,9 +44,9 @@ caty-gateway setup --member me --backend claude               # サービス設�
 
 | 値 | アダプタ | 会話の方式 | 必須 env | 主な既定 |
 |---|---|---|---|---|
-| `claude` | `backends/claude.py` | per-turn CLI（`claude -p --resume`） | `CATY_CLAUDE_CWD` | `CATY_CLAUDE_BIN=claude` |
+| `claude` | `backends/claude.py` | per-turn CLI（`claude -p --resume`） | なし（`CATY_CLAUDE_CWD` は任意・既定 `~`） | `CATY_CLAUDE_BIN=claude` |
 | `codex` | `backends/generic_cli.py` preset `codex` | per-turn CLI（`codex exec --json` / `exec resume`） | なし | `CATY_GCLI_BIN=codex` |
-| `openclaw` | `backends/openclaw.py` | CLI（`openclaw agent --json`） | `CATY_AGENT` | `OPENCLAW_BIN=openclaw` |
+| `openclaw` | `backends/openclaw.py` | CLI（`openclaw agent --json`） | なし（`CATY_AGENT` は任意・既定 `main`） | `OPENCLAW_BIN=openclaw` |
 | `hermes` | `backends/hermes.py` | HTTP `/v1/responses` | `CATY_HERMES_API_KEY` | `CATY_HERMES_URL=http://127.0.0.1:8642` |
 | `openai-compat` | `backends/openai_compat.py` | HTTP `/v1/chat/completions` | `CATY_OPENAI_BASE_URL` `CATY_OPENAI_MODEL` | `CATY_OPENAI_API_KEY` は任意（Ollama / LM Studio は不要） |
 
@@ -119,13 +119,37 @@ Issue ラベルの `component:*` は、この表の行と 1 対 1 です。
 | セットアップ進行状態 | `~/.local/state/caty-gateway/setup/<id>.*` |
 | 会話履歴 | `~/.local/state/caty-gateway/history/<id>/`（`CATY_HISTORY_DIR`・`--no-history` で無効） |
 | 同梱資産のコピー・つなぎ音声 | `~/.local/share/caty-gateway/<id>/{assets,fillers}` |
+| ペアリングストア | `~/.local/state/caty-gateway/pairing/`（0700・`CATY_PAIRING_DIR` で変更可） |
+
+<a id="reissue-qr"></a>
+
+### QR の再発行
+
+`caty-gateway qr` は、サービスと同じ環境変数（少なくとも `CATY_ID` `CATY_GATEWAY_PORT` `CATY_TOKEN` `CATY_PUBLIC_URL`）を必要とします。新しいターミナルにはそれが無いので、先に読み込みます。
+
+Linux（環境ファイルを読み込む）:
+
+```sh
+set -a; . ~/.config/caty-gateway/<id>.env; set +a
+caty-gateway qr
+```
+
+macOS（環境変数は plist の中にあるので取り出す。**このリリースでは通しの実測なし**。`plutil -extract` 自体はテンプレートで確認済み）:
+
+```sh
+P=~/Library/LaunchAgents/ai.caty.gateway.<id>.plist
+for k in CATY_ID CATY_GATEWAY_PORT CATY_TOKEN CATY_PUBLIC_URL; do export $k="$(plutil -extract EnvironmentVariables.$k raw "$P")"; done
+caty-gateway qr
+```
+
+`qr --member <id>` で環境を自動で読む改善は別 Issue で扱います。
 
 <a id="uninstall"></a>
 
 ### アンインストール
 
 1. サービスを外す。macOS: `launchctl bootout gui/$(id -u)/ai.caty.gateway.<id>` のあと plist を削除。Linux: `systemctl --user disable --now caty-gateway-<id>` のあと `~/.config/caty-gateway/<id>.env` を削除
-2. 上の保存先 4 つを削除
+2. 上の保存先 5 つを削除（`~/.config/caty-gateway/` `~/.local/state/caty-gateway/` `~/.local/share/caty-gateway/` を丸ごと消せば足ります）
 3. `uv tool uninstall caty-gateway`（pipx なら `pipx uninstall caty-gateway`）
 
 backend 側（Claude Code の設定・作業ディレクトリなど）には何も書いていないので、そちらの後始末はありません。
@@ -174,7 +198,7 @@ make gate        # 公開ゲート単体（個人 URL・denylist・selftest）
 
 - `docs/env.md` は `python tools/env-inventory.py` の生成物です。環境変数を増減したら再生成し、未分類の名前は `tools/env-inventory.py` の分類表に追加します
 - `tools/scrub-audit.sh` は個人名・内部パス・秘密情報らしき文字列を検出します。例外は `.scrub-allow` に理由つきで足します
-- `tools/check_publication_gate.py` は公開前ゲートの正本（family-dev-handbook）と byte-identical に vendoring しています。ローカルでは `make gate` で同じ検査が走ります
+- `tools/check_publication_gate.py` は公開リポジトリ caty-ai/family-dev-handbook の `templates/publication-gate/` にある正本と byte-identical に vendoring しています。ローカルでは `make gate` で同じ検査が走ります
 - CI は PR ごとに Ubuntu で `make test` / `make lint` を実行します。hosted macOS レーンは公開時に有効化予定で、それまでは skip 理由を caller に明記しています
 
 backend の追加手順は [CONTRIBUTING.md](../CONTRIBUTING.md) にあります。

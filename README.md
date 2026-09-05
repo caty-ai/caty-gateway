@@ -51,11 +51,11 @@ It connects the AI on your computer and CatyPhone on your iPhone, only inside a 
 
 ```mermaid
 flowchart LR
-    phone["📱 CatyPhone<br/>(iPhone)"]
+    phone["CatyPhone<br/>(iPhone)"]
     subgraph tailnet["Your private network (Tailscale)"]
         gw["caty-gateway<br/>(running on your computer)"]
     end
-    ai["🧠 Your usual AI<br/>Claude Code / Codex CLI / OpenClaw<br/>Hermes / Ollama / LM Studio"]
+    ai["Your usual AI<br/>Claude Code / Codex CLI / OpenClaw<br/>Hermes / Ollama / LM Studio"]
     phone <-- "voice, photos, screen" --> gw
     gw <-- "via your usual CLI" --> ai
 ```
@@ -76,7 +76,7 @@ flowchart LR
 
   Traffic between your iPhone and computer stays inside your private Tailscale network. Conversation history is also kept on your own computer.
 
-You only need three things to get this running.
+On the computer side you only need three things.
 
 ---
 
@@ -161,30 +161,37 @@ If you don't have `uv`, `pipx install caty-gateway` works the same way.
 caty-gateway doctor --backend claude
 ```
 
-Replace `claude` with the `--backend` value from the table above. If everything shows `PASS`, you're ready to go. Any `FAIL` line comes with instructions for fixing it.
+Replace `claude` with the `--backend` value from the table above. When only `PASS` and `WARN` remain, you're ready to go. Any `FAIL` line comes with instructions for fixing it. `WARN` marks a check that could not be confirmed passively; if that AI works as usual, carry on.
 
 ```text
 PASS OS
 PASS Python
 PASS ffmpeg
+PASS ffprobe
+PASS tailscale executable
 PASS tailscale login
 PASS tailscale IPv4
 PASS port
+PASS public URL
+PASS config directory
+PASS state directory
+PASS data directory
 PASS claude version
+PASS claude working directory
 PASS claude credentials
 ```
 
 **3. Set up**
 
 ```sh
-caty-gateway setup --member <your name> --backend claude
+caty-gateway setup --member me --backend claude
 ```
 
-`<your name>` is a short name using letters and numbers (e.g. `me`). This creates a background service that starts every time your computer boots, and shows a QR code at the end. If you just want to preview what it will do first, add `--plan-only` to see the full plan without changing anything.
+Replace `me` with a short name for yourself using letters and numbers (or just keep `me`). This creates a background service that starts every time your computer boots, and shows a QR code at the end. If you just want to preview what it will do first, add `--plan-only` to see the full plan without changing anything.
 
 **4. Scan the QR code**
 
-Open CatyPhone and scan the QR code shown on screen. Your iPhone and computer will connect, and you'll be able to start talking. The QR code expires after 10 minutes, and can only be scanned once. To get a new one, run `caty-gateway qr`.
+Open CatyPhone and scan the QR code shown on screen. Your iPhone and computer will connect, and you'll be able to start talking. The QR code expires after 10 minutes, and can only be scanned once. To get a new one, run `caty-gateway qr` with the same environment variables as the service (see [Reissuing the QR](docs/engineering.md#reissue-qr)).
 
 <details>
 <summary>If something goes wrong (command not found, no uv or pipx, Python too old)</summary>
@@ -192,6 +199,7 @@ Open CatyPhone and scan the QR code shown on screen. Your iPhone and computer wi
 - **`caty-gateway: command not found`** — Reopen your terminal. If `uv tool install` printed a line about adding something to your PATH, run that line first.
 - **Neither `uv` nor `pipx` is installed** — Install one of them. uv: [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) ／ pipx: [pipx.pypa.io](https://pipx.pypa.io/stable/installation/).
 - **Python is older than 3.10** — You can let uv install Python for you too, e.g. `uv tool install --python 3.12 caty-gateway`.
+- **Package not found (`No solution found` or similar)** — Until the package is published on PyPI, install straight from GitHub: `uv tool install --from git+https://github.com/caty-ai/caty-gateway caty-gateway`
 - **What's a terminal?** — On macOS it's "Terminal.app"; on Linux it's your terminal application. Paste the commands above one line at a time and press Enter.
 
 </details>
@@ -206,11 +214,25 @@ Now that it's connected, here's what this tool deliberately does not do.
 
 caty-gateway only handles the "front door" — it doesn't do anything extra to your AI or your conversations.
 
-- **It doesn't change your AI's settings** — it talks to Claude Code and others by calling the same CLI you already use. It never touches your working folder or config files
-- **Checks only look, they don't act** — `doctor` only checks version numbers and login status; it never sends a prompt to your AI (so it never uses up any of your usage quota)
-- **Nothing gets in from outside your private network** — pairing requests are only accepted from inside your Tailscale network, or from the computer itself
-- **The QR code never carries a long-lived key** — it only contains a one-time password that expires in 10 minutes; the real key is handed over separately, after scanning
-- **Records stay on your computer** — conversation history is stored at `~/.local/state/caty-gateway/history/<name>/`, and deleting that folder deletes it
+- **It doesn't change your AI's settings**
+
+  it talks to Claude Code and others by calling the same CLI you already use. It never touches your working folder or config files
+
+- **Checks only look, they don't act**
+
+  `doctor` only checks version numbers and login status; it never sends a prompt to your AI (so it never uses up any of your usage quota)
+
+- **Nothing gets in from outside your private network**
+
+  pairing requests are only accepted from inside your Tailscale network, or from the computer itself
+
+- **The QR code never carries a long-lived key**
+
+  it only contains a one-time password that expires in 10 minutes; the real key is handed over separately, after scanning
+
+- **Records stay on your computer**
+
+  conversation history is stored at `~/.local/state/caty-gateway/history/<name>/`, and deleting that folder deletes it
 
 Nothing is ever sent externally, except for **optional features you turn on yourself**, such as text-to-speech or avatar generation. Which features send what is documented in [privacy](docs/privacy.md).
 
@@ -243,16 +265,16 @@ You aren't logged in to Tailscale on your computer. Open the Tailscale app, log 
 </details>
 
 <details>
-<summary>`FAIL port` (`port 8788 is already listening`)</summary>
+<summary>`FAIL port` (doctor) / `port … is already listening` (setup)</summary>
 
 Another program is using the same port number. Run `doctor` and `setup` again with an open port, e.g. `--port 8811`.
 
 </details>
 
 <details>
-<summary>`FAIL claude version` ／ `FAIL claude credentials` (backend not found)</summary>
+<summary>`FAIL claude version` ／ `WARN claude credentials` (backend not found, or login cannot be confirmed)</summary>
 
-That AI's CLI either isn't installed or you aren't logged in. Start that CLI once in your terminal, log in, then run `doctor` again. For Ollama or LM Studio, start the server first, then set `CATY_OPENAI_BASE_URL` to a URL like `http://127.0.0.1:11434/v1`.
+That AI's CLI either isn't installed or you aren't logged in. `WARN claude credentials` also appears when your login lives in the OS keychain, which `doctor` cannot read. If `claude` works normally in your terminal, you can carry on. Start that CLI once in your terminal, log in, then run `doctor` again. For Ollama or LM Studio, start the server first, then set `CATY_OPENAI_BASE_URL` to a URL like `http://127.0.0.1:11434/v1`.
 
 </details>
 
@@ -266,7 +288,7 @@ In most cases, your iPhone isn't on the same Tailscale network as your computer.
 <details>
 <summary>Scanning the QR code says it "expired"</summary>
 
-QR codes expire 10 minutes after they're shown. Run `caty-gateway qr` to get a new one.
+QR codes expire 10 minutes after they're shown. Follow [Reissuing the QR](docs/engineering.md#reissue-qr) to get a new one.
 
 </details>
 
@@ -278,7 +300,7 @@ You can find the full picture of how it works and how to configure it in the doc
 
 ## Learn more
 
-Documentation is split by what you're looking for.
+Documentation is split by what you're looking for. The Japanese versions are linked at the top of each page.
 
 | What you want to know | Page |
 |---|---|
