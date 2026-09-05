@@ -281,7 +281,7 @@ AI 那一侧不会留下任何痕迹。
 <details>
 <summary>已经启动了，但扫描二维码也连接不上</summary>
 
-多数情况是 iPhone 和电脑不在同一个 Tailscale 网络中。在 iPhone 的 Tailscale 应用里登录同一个账号，确认连接已开启，然后用 `caty-gateway qr` 重新显示二维码。如果走的是 Tailscale 以外的路径（比如家中 Wi-Fi 的 IP），即使能启动，也会在配对阶段卡住。
+多数情况是 iPhone 和电脑不在同一个 Tailscale 网络中。在 iPhone 的 Tailscale 应用里登录同一个账号，确认连接已开启，然后按 [重新生成二维码](docs/engineering.md#reissue-qr) 的步骤重新显示二维码。如果走的是 Tailscale 以外的路径（比如家中 Wi-Fi 的 IP），即使能启动，也会在配对阶段卡住。
 
 </details>
 

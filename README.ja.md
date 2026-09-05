@@ -281,7 +281,7 @@ AI 側には何も残りません。
 <details>
 <summary>起動はしたのに、QR を読んでもつながらない</summary>
 
-iPhone がパソコンと同じ Tailscale ネットワークにいないことがほとんどです。iPhone の Tailscale アプリで同じアカウントにログインし、接続がオンになっていることを確認して、`caty-gateway qr` で新しい QR を出し直します。Tailscale 以外の経路（家の Wi-Fi の IP など）では、起動はできてもペアリングで止まります。
+iPhone がパソコンと同じ Tailscale ネットワークにいないことがほとんどです。iPhone の Tailscale アプリで同じアカウントにログインし、接続がオンになっていることを確認して、[QR の再発行](docs/engineering.md#reissue-qr) の手順で新しい QR を出し直します。Tailscale 以外の経路（家の Wi-Fi の IP など）では、起動はできてもペアリングで止まります。
 
 </details>
 

@@ -281,7 +281,7 @@ That AI's CLI either isn't installed or you aren't logged in. `WARN claude crede
 <details>
 <summary>It started, but scanning the QR code doesn't connect</summary>
 
-In most cases, your iPhone isn't on the same Tailscale network as your computer. Log in to the same Tailscale account on your iPhone's Tailscale app, confirm the connection is on, and generate a fresh QR code with `caty-gateway qr`. Any route other than Tailscale (like your home Wi-Fi's IP address) may start up fine but will get stuck at pairing.
+In most cases, your iPhone isn't on the same Tailscale network as your computer. Log in to the same Tailscale account on your iPhone's Tailscale app, confirm the connection is on, and generate a fresh QR code by following [Reissuing the QR](docs/engineering.md#reissue-qr). Any route other than Tailscale (like your home Wi-Fi's IP address) may start up fine but will get stuck at pairing.
 
 </details>
 

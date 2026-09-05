@@ -93,7 +93,7 @@ flowchart LR
 | Python | ✅ 3.10 ขึ้นไป (วิธีติดตั้งดูในส่วนพับด้านล่าง) |
 | เครือข่าย | ✅ Tailscale (ใช้แผนฟรีได้) |
 
-**AI (backend)ที่รองรับ**
+**AI (backend) ที่รองรับ**
 
 "backend" คือ AI ที่ caty-gateway เรียกใช้อยู่เบื้องหลัง เลือกได้ด้วยค่าที่ใส่ใน `--backend`
 
@@ -224,7 +224,7 @@ caty-gateway ทำหน้าที่เป็นเพียง "ทาง�
 
 - **ไม่รับการเชื่อมต่อจากนอกเครือข่ายส่วนตัว**
 
-  การจับคู่ (pairing)จะรับเฉพาะจากภายในเครือข่าย Tailscale หรือจากคอมพิวเตอร์เครื่องนั้นเองเท่านั้น
+  การจับคู่ (pairing) จะรับเฉพาะจากภายในเครือข่าย Tailscale หรือจากคอมพิวเตอร์เครื่องนั้นเองเท่านั้น
 
 - **QR ไม่มีคีย์ระยะยาวฝังอยู่**
 
@@ -239,7 +239,7 @@ caty-gateway ทำหน้าที่เป็นเพียง "ทาง�
 <details>
 <summary>เมื่อต้องการเลิกใช้งาน (ขั้นตอนลบทั้งหมด)</summary>
 
-1. หยุดและถอนบริการเบื้องหลัง (macOS คือ `~/Library/LaunchAgents/ai.caty.gateway.<ชื่อ>.plist`, Linux คือ `caty-gateway-<ชื่อ>.service`)ขั้นตอนละเอียดดูที่ [เอกสารสำหรับวิศวกร](docs/engineering.md#uninstall)
+1. หยุดและถอนบริการเบื้องหลัง (macOS คือ `~/Library/LaunchAgents/ai.caty.gateway.<ชื่อ>.plist`, Linux คือ `caty-gateway-<ชื่อ>.service`) ขั้นตอนละเอียดดูที่ [เอกสารสำหรับวิศวกร](docs/engineering.md#uninstall)
 2. ลบโฟลเดอร์การตั้งค่าและบันทึก: `~/.config/caty-gateway/`、`~/.local/state/caty-gateway/`、`~/.local/share/caty-gateway/`
 3. ลบตัวโปรแกรม: `uv tool uninstall caty-gateway` (ถ้าใช้ pipx ก็ `pipx uninstall caty-gateway`)
 
@@ -281,7 +281,7 @@ caty-gateway ทำหน้าที่เป็นเพียง "ทาง�
 <details>
 <summary>เริ่มระบบสำเร็จแล้ว แต่สแกน QR แล้วเชื่อมต่อไม่ได้</summary>
 
-ส่วนใหญ่เกิดจาก iPhone ไม่ได้อยู่ในเครือข่าย Tailscale เดียวกันกับคอมพิวเตอร์ ให้ล็อกอินแอป Tailscale บน iPhone ด้วยบัญชีเดียวกัน ตรวจสอบว่าการเชื่อมต่อเปิดอยู่ แล้วออก QR ใหม่ด้วย `caty-gateway qr` เส้นทางอื่นที่ไม่ใช่ Tailscale (เช่น IP ของ Wi-Fi ที่บ้าน)อาจเริ่มระบบได้ แต่จะติดขัดที่ขั้นตอนจับคู่ (pairing)
+ส่วนใหญ่เกิดจาก iPhone ไม่ได้อยู่ในเครือข่าย Tailscale เดียวกันกับคอมพิวเตอร์ ให้ล็อกอินแอป Tailscale บน iPhone ด้วยบัญชีเดียวกัน ตรวจสอบว่าการเชื่อมต่อเปิดอยู่ แล้วออก QR ใหม่ตามขั้นตอนที่ [การออก QR ใหม่](docs/engineering.md#reissue-qr) เส้นทางอื่นที่ไม่ใช่ Tailscale (เช่น IP ของ Wi-Fi ที่บ้าน) อาจเริ่มระบบได้ แต่จะติดขัดที่ขั้นตอนจับคู่ (pairing)
 
 </details>
 
