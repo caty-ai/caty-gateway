@@ -1,0 +1,52 @@
+name: Risk Review Gate
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled, ready_for_review]
+permissions: {contents: read}
+concurrency: {group: 'risk-review-${{ github.event.pull_request.number }}', cancel-in-progress: true}
+jobs:
+  risk-review-gate:
+    uses: caty-ai/family-dev-handbook/.github/workflows/reusable-review-labels.yml@ci-v1
+    permissions: {contents: read, issues: read, pull-requests: write}
+    with:
+      # paid third-party APIs (keys are the operator's; a change here can change what is billed)
+      risk_paths_billing: |
+        src/caty_gateway/tts_fish.py
+        src/caty_gateway/fish_tts_contract.py
+        src/caty_gateway/backends/openai_compat.py
+        src/caty_gateway/vision_describer.py
+        src/caty_gateway/avatar_engine.py
+      # anything that sends bytes off the machine: backends, push, TTS/vision/avatar calls, voice preview
+      risk_paths_outbound: |
+        src/caty_gateway/backends/**
+        src/caty_gateway/caty_push.py
+        src/caty_gateway/push_events.py
+        src/caty_gateway/tts_fish.py
+        src/caty_gateway/vision_describer.py
+        src/caty_gateway/avatar_engine.py
+        src/caty_gateway/caty_config.py
+        src/caty_gateway/voice_preview.py
+        src/caty_gateway/voice_catalog.py
+        src/caty_gateway/setup_supervisor.py
+        src/caty_gateway/doctor.py
+      # CI gates, publication gate, scrub allowlist, packaging manifest
+      risk_paths_gates: |
+        .github/workflows/**
+        .github/risk-reviewers.txt
+        .github/release-sync-ignore
+        Makefile
+        tools/**
+        .publication-denylist
+        .scrub-allow
+        pyproject.toml
+        .gitignore
+      # pairing token / session boundary (flat layout: no auth/ directory, so real paths are listed)
+      risk_paths_auth: |
+        src/caty_gateway/caty_gateway.py
+        src/caty_gateway/pairing_store.py
+        src/caty_gateway/session_links.py
+        src/caty_gateway/share_store.py
+        src/caty_gateway/setup_redaction.py
+        src/caty_gateway/setup_orchestrator.py
+        src/caty_gateway/templates/**
+        docs/contracts/**
