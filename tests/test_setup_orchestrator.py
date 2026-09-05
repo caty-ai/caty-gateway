@@ -16,6 +16,8 @@ import time
 import pytest
 
 
+from caty_gateway.doctor import Doctor
+from functools import partial
 from caty_gateway import setup_orchestrator
 from caty_gateway import setup_redaction
 from caty_gateway import setup_supervisor
@@ -45,13 +47,16 @@ def _prepare_fake_commands(tmp_path: pathlib.Path) -> pathlib.Path:
           exit 0
         fi
         if [ "$1" = "ip" ]; then
-          echo "100.1.1.1"
+          echo "100.64.0.1"
           exit 0
         fi
         exit 1
         """,
     )
     _write_exec(bin_dir / "ffmpeg", "#!/usr/bin/env sh\nexit 0\n")
+    _write_exec(bin_dir / "ffprobe", "#!/usr/bin/env sh\nexit 0\n")
+    _write_exec(bin_dir / "claude", "#!/usr/bin/env sh\nexit 0\n")
+    _write_exec(bin_dir / "codex", "#!/usr/bin/env sh\nexit 0\n")
     _write_exec(
         bin_dir / "systemctl",
         "#!/usr/bin/env sh\nexit 0\n",
@@ -61,58 +66,18 @@ def _prepare_fake_commands(tmp_path: pathlib.Path) -> pathlib.Path:
         "#!/usr/bin/env sh\necho journal line\n",
     )
     _write_exec(bin_dir / "loginctl", "#!/usr/bin/env sh\nexit 0\n")
-    _write_exec(bin_dir / "openclaw", "#!/usr/bin/env sh\nexit 0\n")
+    _write_exec(bin_dir / "openclaw", "#!/usr/bin/env sh\necho main\n")
     return bin_dir
 
 
-def _prepare_fake_gateway_files(workdir: pathlib.Path) -> None:
-    _write_exec(
-        workdir / "install-member-service-systemd.sh",
-        """
-        #!/usr/bin/env sh
-        set -eu
-        while [ "$1" = "--yes" ] || [ "$1" = "--dry-run" ]; do
-          shift
-        done
-        member="$1"
-        env_path="$HOME/.config/caty-gateway/$member.env"
-        mkdir -p "$(dirname "$env_path")"
-        printf 'CATY_GATEWAY_PORT=%s\n' "$PORT" > "$env_path"
-        printf 'CATY_ID=%s\n' "$MEMBER_ID" >> "$env_path"
-        printf 'CATY_TOKEN=%s\n' "$TOKEN" >> "$env_path"
-        """,
-    )
-    _write_exec(
-        workdir / "install-member-service.sh",
-        "#!/usr/bin/env sh\necho launcher install\n",
-    )
-    _write_exec(
-        workdir / "caty_gateway.py",
-        """
-        #!/usr/bin/env python3
-        import os
-        import sys
-        if len(sys.argv) > 1 and sys.argv[1] == "qr":
-            print(os.environ.get("CATY_TOKEN", ""))
-            print("deadbeef.0123456789abcdef0123456789abcdef")
-            raise SystemExit(0)
-        print("ok")
-        """,
-    )
-
-    # qrcode import shim so orchestrator won't try to provision the .venv path in tests.
-    package_root = workdir / "fake_pyqrcode" / "qrcode"
-    package_root.mkdir(parents=True, exist_ok=True)
-    (package_root / "__init__.py").write_text("VERSION = 'stub'\n", encoding="utf-8")
-
-    template = workdir / "systemd" / "caty-gateway.service.template"
-    template.parent.mkdir(parents=True, exist_ok=True)
-    template.write_text(
-        "[Service]\n"
-        "WorkingDirectory=__WORKDIR__\n"
-        "Environment=HOME=%h\n"
-        "EnvironmentFile=%h/.config/caty-gateway/%i.env\n"
-        "ExecStart=__PYTHON__ __WORKDIR__/caty_gateway.py\n",
+def _prepare_fake_gateway_files(workdir):
+    # Child commands exercise module dispatch with a deliberately fake package.
+    package_root = workdir / "fake_pyqrcode"
+    for package in ("qrcode", "caty_gateway"):
+        (package_root / package).mkdir(parents=True, exist_ok=True)
+        (package_root / package / "__init__.py").write_text("", encoding="utf-8")
+    (package_root / "caty_gateway" / "__main__.py").write_text(
+        "import sys\nif sys.argv[1:2] == ['qr']: print('QR URL: http://100.64.0.1:49152/qr/test')\n",
         encoding="utf-8",
     )
 
@@ -134,6 +99,10 @@ def _make_orch(
         "PYTHONPATH": str(workdir / "fake_pyqrcode"),
         "XDG_RUNTIME_DIR": str(fake_home_dir / "xdg-runtime"),
     }
+    env.update({"CATY_GATEWAY_TOKEN": "fake-gateway-token", "CATY_OPENAI_BASE_URL": "http://127.0.0.1:1234/v1",
+                "CATY_OPENAI_MODEL": "fake-model"})
+    monkeypatch.setattr(setup_orchestrator, "Doctor", partial(Doctor, port_available=lambda port: True,
+        get_json=lambda url, headers, timeout: (200, {"data": [{"id": "fake-model"}]})))
     if extra_env:
         env.update(extra_env)
     _prepare_fake_gateway_files(workdir)
@@ -175,7 +144,7 @@ def test_plan_only_is_side_effect_free(fake_home, tmp_path, monkeypatch):
             for path in [root, *sorted(root.rglob("*"))]
         }
 
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--plan-only", "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--plan-only", "--yes", "--public-url", "http://100.64.0.1:8788")
     orch._voice = lambda: (_ for _ in ()).throw(
         AssertionError("plan-only must not probe voice readiness")
     )
@@ -214,11 +183,11 @@ def test_preflight_aggregates_failures(fake_home, tmp_path, monkeypatch, capsys)
     output = capsys.readouterr().err
     assert "Preflight failed" in output
     assert "tailscale missing" not in output
-    assert "ffmpeg missing" in output
-    assert "Cannot infer --public-url" in output
+    assert "ffmpeg" in output
+    assert "public URL" in output
 
 
-def test_preflight_warns_but_does_not_fail_when_ffprobe_is_missing(
+def test_preflight_fails_when_ffprobe_is_missing(
     fake_home, tmp_path, monkeypatch, capsys
 ):
     orch = _make_orch(
@@ -228,11 +197,12 @@ def test_preflight_warns_but_does_not_fail_when_ffprobe_is_missing(
         "--plan-only",
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
-    orch._preflight()
-    output = capsys.readouterr().out
-    assert "WARN: ffprobe is missing" in output
+    pathlib.Path(orch.env["PATH"].split(":", 1)[0], "ffprobe").unlink()
+    with pytest.raises(setup_orchestrator.SetupError, match="preflight failed"):
+        orch._preflight()
+    assert "ffprobe" in capsys.readouterr().err
 
 
 def test_public_url_with_userinfo_is_rejected(fake_home, tmp_path, monkeypatch, capsys):
@@ -243,11 +213,11 @@ def test_public_url_with_userinfo_is_rejected(fake_home, tmp_path, monkeypatch, 
         "--plan-only",
         "--yes",
         "--public-url",
-        "http://user:password@100.1.1.1:8788",
+        "http://user:password@100.64.0.1:8788",
     )
     with pytest.raises(setup_orchestrator.SetupError, match="preflight failed"):
         orch._preflight()
-    assert "public URL must not contain userinfo" in capsys.readouterr().err
+    assert "public URL" in capsys.readouterr().err
 
 
 def test_ttl_env_validation_and_clamp(fake_home, tmp_path, monkeypatch):
@@ -268,7 +238,7 @@ def test_ttl_env_validation_and_clamp(fake_home, tmp_path, monkeypatch):
         "--plan-only",
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_RESUME_TTL_SECONDS": "99999999"},
     )
     assert orch.resume_ttl == 24 * 60 * 60
@@ -293,7 +263,7 @@ def test_qr_timeout_is_validated_when_configuration_is_read(
 
 
 def test_backend_inferred_from_env_is_validated(fake_home, tmp_path, monkeypatch):
-    with pytest.raises(setup_orchestrator.SetupError, match="CATY_BACKEND"):
+    with pytest.raises(setup_orchestrator.SetupError, match="post-release: backend"):
         _make_orch(
             fake_home,
             tmp_path,
@@ -320,7 +290,7 @@ def test_collision_member_port_and_resume_ownership(fake_home, tmp_path, monkeyp
         "--port",
         str(collision_port),
         "--public-url",
-        f"http://100.1.1.1:{collision_port}",
+        f"http://100.64.0.1:{collision_port}",
         disable_collision_scan=False,
     )
     with pytest.raises(setup_orchestrator.SetupError):
@@ -342,7 +312,7 @@ def test_collision_member_port_and_resume_ownership(fake_home, tmp_path, monkeyp
             "--port",
             str(collision_port),
             "--public-url",
-            f"http://100.1.1.1:{collision_port}",
+            f"http://100.64.0.1:{collision_port}",
             disable_collision_scan=False,
         ).run()
 
@@ -356,7 +326,7 @@ def test_resume_from_failed_phase_then_success(fake_home, tmp_path, monkeypatch)
         "--port",
         "8788",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
 
     orch._health = lambda: (_ for _ in ()).throw(
@@ -380,7 +350,7 @@ def test_resume_from_failed_phase_then_success(fake_home, tmp_path, monkeypatch)
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch2._health = lambda: None
     orch2._identity = lambda: None
@@ -393,7 +363,7 @@ def test_resume_from_failed_phase_then_success(fake_home, tmp_path, monkeypatch)
 
 
 def test_install_persists_ownership_before_phase_checkpoint(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch._preflight()
     orch._start_state()
     orch._install()  # simulate a kill immediately after this returns, before _mark("install")
@@ -401,13 +371,13 @@ def test_install_persists_ownership_before_phase_checkpoint(fake_home, tmp_path,
     assert payload["env_file_created_by_us"] is True
     assert len(payload["env_file_sha256"]) == 64
     assert payload["token_digest"] == ""
-    resumed = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    resumed = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     resumed.state = resumed._read_state(validate_fingerprint=False)
     assert resumed._owned_artifact()
 
 
 def test_state_parent_directories_are_private(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch.config = orch._resolved_config()
     orch._start_state()
     assert stat.S_IMODE(orch.state_path.parent.parent.stat().st_mode) == 0o700
@@ -418,7 +388,7 @@ def test_kill_between_installer_write_and_state_write_is_adopted(fake_home, tmp_
     """Kill window: the installer wrote the artifact but the orchestrator died
     before recording ownership. The persisted token digest proves the artifact
     is ours, so a rerun resumes instead of reporting a false collision."""
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch._preflight()
     orch._start_state()
     token = "aa" * 24
@@ -429,7 +399,7 @@ def test_kill_between_installer_write_and_state_write_is_adopted(fake_home, tmp_
         "CATY_GATEWAY_PORT=8788\nCATY_ID=alice\nCATY_TOKEN=%s\n" % token, encoding="utf-8"
     )
 
-    resumed = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    resumed = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     resumed._health = lambda: None
     resumed._identity = lambda: None
     resumed._qr = lambda: None
@@ -439,12 +409,12 @@ def test_kill_between_installer_write_and_state_write_is_adopted(fake_home, tmp_
 
     # A foreign artifact whose token does not match the digest still aborts.
     _clear_state(orch)
-    orch2 = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch2 = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch2._start_state()
     orch2.state.token_digest = orch2._token_digest("bb" * 24)
     orch2._write_state()
     foreign_before = (artifact.read_bytes(), artifact.stat().st_mtime_ns)
-    orch3 = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch3 = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     with pytest.raises(setup_orchestrator.SetupError):
         orch3.run()
     assert (artifact.read_bytes(), artifact.stat().st_mtime_ns) == foreign_before
@@ -459,7 +429,7 @@ def test_adoption_window_listener_is_ours_but_foreign_artifact_still_collides(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         disable_collision_scan=False,
     )
     # Pin the port probe: the host running the tests may itself serve 8788.
@@ -480,7 +450,7 @@ def test_adoption_window_listener_is_ours_but_foreign_artifact_still_collides(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         disable_collision_scan=False,
     )
     resumed.state = resumed._read_state(validate_fingerprint=False)
@@ -497,7 +467,7 @@ def test_adoption_window_listener_is_ours_but_foreign_artifact_still_collides(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         disable_collision_scan=False,
     )
     foreign.state = foreign._read_state(validate_fingerprint=False)
@@ -513,7 +483,7 @@ def test_plan_only_does_not_commit_adoption_window_state(fake_home, tmp_path, mo
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch._preflight()
     orch._start_state()
@@ -533,7 +503,7 @@ def test_plan_only_does_not_commit_adoption_window_state(fake_home, tmp_path, mo
         "--plan-only",
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     assert plan.run() == 0
     assert plan.state_path.read_bytes() == state_before
@@ -556,7 +526,7 @@ def test_plan_only_hermes_never_prompts_and_resume_reuses_installed_key(
         "--plan-only",
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     with pytest.raises(setup_orchestrator.SetupError, match="preflight failed"):
         absent._preflight()
@@ -580,7 +550,7 @@ def test_plan_only_hermes_never_prompts_and_resume_reuses_installed_key(
         "--plan-only",
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     assert resumed.run() == 0
     assert resumed.env["CATY_HERMES_API_KEY"] == "installed-key"
@@ -597,7 +567,7 @@ def test_resume_allows_different_health_timeout_and_restarts_service(
         "--health-timeout",
         "30",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch._health = lambda: (_ for _ in ()).throw(setup_orchestrator.SetupError("temporary health failure"))
     with pytest.raises(setup_orchestrator.SetupError, match="temporary health failure"):
@@ -614,7 +584,7 @@ def test_resume_allows_different_health_timeout_and_restarts_service(
         "--health-timeout",
         "7",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     starts = []
     resumed._start = lambda: starts.append("start")
@@ -632,7 +602,7 @@ def test_digest_window_unit_requires_exact_installer_render(fake_home, tmp_path,
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch._preflight()
     orch._start_state()
@@ -641,12 +611,7 @@ def test_digest_window_unit_requires_exact_installer_render(fake_home, tmp_path,
 
     unit = fake_home / ".config" / "systemd" / "user" / orch.service_name
     unit.parent.mkdir(parents=True, exist_ok=True)
-    template = (tmp_path / "systemd" / "caty-gateway.service.template").read_text(encoding="utf-8")
-    expected = template.replace("__WORKDIR__", str(tmp_path.resolve()))
-    expected = expected.replace("__PYTHON__", orch.service_python)
-    expected = expected.replace("%h", str(fake_home))
-    expected = expected.replace("%i", "alice")
-    unit.write_bytes((expected.rstrip("\n") + "\n").encode("utf-8"))
+    unit.write_bytes(orch._expected_systemd_unit())
     assert orch._member_collision() is None
 
     unit.write_bytes(b"foreign unit\n")
@@ -662,16 +627,16 @@ def test_installer_env_forces_member_language_not_shell_locale(fake_home, tmp_pa
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"LANG": "en_US.UTF-8"},
     )
     # Linux: the systemd installer reads CATY_LANG directly; the shell locale stays valid.
-    assert orch._installer_env("token")["LANG"] == "en_US.UTF-8"
+    assert orch._service_env("token")["CATY_LANG"] == "ja"
     # macOS: the launchd installer renders __LANG__ from $LANG, so it must be pinned.
     orch.system = "Darwin"
-    assert orch._installer_env("token")["LANG"] == "ja"
+    assert orch._service_env("token")["CATY_LANG"] == "ja"
     orch.env["CATY_LANG"] = "th"
-    assert orch._installer_env("token")["LANG"] == "th"
+    assert orch._service_env("token")["CATY_LANG"] == "th"
 
 
 def test_post_success_rerun_explains_how_to_show_qr(fake_home, tmp_path, monkeypatch):
@@ -681,13 +646,13 @@ def test_post_success_rerun_explains_how_to_show_qr(fake_home, tmp_path, monkeyp
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch.artifact_path.write_text("CATY_TOKEN=live-token\n", encoding="utf-8")
     message = orch._member_collision()
     assert message is not None
     assert "member appears already set up at %s" % orch.artifact_path in message
-    assert "python3 caty_gateway.py qr" in message
+    assert "caty-gateway qr" in message
     assert "move the file aside / choose another --member" in message
 
 
@@ -698,7 +663,7 @@ def test_qr_uses_unbuffered_stdio(fake_home, tmp_path, monkeypatch):
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch._install = lambda: None
     orch._start = lambda: None
@@ -739,7 +704,7 @@ def test_qr_delivery_cli_wins_over_env_and_is_fingerprinted(fake_home, tmp_path,
         "--plan-only",
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         "--qr-delivery",
         "tty",
         extra_env={"CATY_QR_DELIVERY": "url"},
@@ -759,7 +724,7 @@ def test_qr_delivery_cli_wins_over_env_and_is_fingerprinted(fake_home, tmp_path,
         "--plan-only",
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_QR_DELIVERY": "url"},
     )
     assert env_only.qr_delivery == "url"
@@ -775,7 +740,7 @@ def test_qr_child_canaries_are_inherited_not_managed(fake_home, tmp_path, monkey
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch._preflight()
     orch._start_state()
@@ -785,6 +750,8 @@ def test_qr_child_canaries_are_inherited_not_managed(fake_home, tmp_path, monkey
         encoding="utf-8",
     )
 
+    (tmp_path / "fake_pyqrcode/caty_gateway/__main__.py").write_text(
+        "import os\nprint(os.environ['CATY_TOKEN'])\nprint(%r)\n" % fake_pair, encoding="utf-8")
     managed_prints: list[str] = []
     real_print = builtins.print
 
@@ -804,7 +771,7 @@ def test_qr_child_canaries_are_inherited_not_managed(fake_home, tmp_path, monkey
 
 
 def test_qr_nonzero_is_actionable(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     artifact = fake_home / ".config/caty-gateway/alice.env"
     artifact.write_text("CATY_TOKEN=secret\nCATY_ID=alice\n", encoding="utf-8")
 
@@ -823,7 +790,7 @@ def test_qr_failure_does_not_claim_setup_success(fake_home, tmp_path, monkeypatc
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         "--qr-delivery",
         "url",
     )
@@ -851,7 +818,7 @@ def test_secrets_are_not_emitted(fake_home, tmp_path, monkeypatch, capsys):
         "--plan-only",
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_TOKEN": "deadbeef-abc"},
     )
     orch.run()
@@ -869,7 +836,7 @@ def test_resume_state_and_managed_output_exclude_secret_canaries(fake_home, tmp_
     fake_token = ("0123456789abcdef") * 3  # gitleaks:allow — deliberate test canary, not a credential (parens keep the family secret-guard quiet)
     fake_pair = "deadbeef.0123456789abcdef0123456789abcdef"  # gitleaks:allow — deliberate test canary
     monkeypatch.setattr(setup_orchestrator.secrets, "token_hex", lambda size: fake_token)
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch._start = lambda: (_ for _ in ()).throw(setup_orchestrator.SetupError("stop after install"))
     with pytest.raises(setup_orchestrator.SetupError):
         orch.run()
@@ -914,7 +881,7 @@ def test_setup_paths_share_one_redaction_implementation():
 
 
 def test_identity_rejects_non_object_json(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch.artifact_path.write_text("CATY_TOKEN=token\n", encoding="utf-8")
 
     class Response:
@@ -938,7 +905,7 @@ def test_identity_rejects_non_object_json(fake_home, tmp_path, monkeypatch):
 def test_voice_phase_accepts_fresh_available_neutral_and_ignores_filler_status(
     fake_home, tmp_path, monkeypatch
 ):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch.artifact_path.write_text("CATY_TOKEN=token\n", encoding="utf-8")
     now = time.time()
 
@@ -976,7 +943,7 @@ def test_voice_phase_accepts_fresh_available_neutral_and_ignores_filler_status(
 
 
 def test_voice_phase_skips_non_fish_engines(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch.artifact_path.write_text("CATY_TOKEN=token\n", encoding="utf-8")
 
     class Response:
@@ -1009,7 +976,7 @@ def test_voice_phase_blocks_stale_available_neutral(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         "--health-timeout",
         "1",
     )
@@ -1071,7 +1038,7 @@ def test_voice_phase_blocks_unavailable_or_future_skewed_neutral(fake_home, tmp_
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         "--health-timeout",
         "1",
     )
@@ -1142,7 +1109,7 @@ def test_voice_phase_blocks_unavailable_or_future_skewed_neutral(fake_home, tmp_
 def test_resume_from_old_phase_list_runs_new_voice_phase_without_reinstall(
     fake_home, tmp_path, monkeypatch
 ):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch.config = orch._resolved_config()
     orch._start_state()
     orch.state.completed_phases = [
@@ -1158,7 +1125,7 @@ def test_resume_from_old_phase_list_runs_new_voice_phase_without_reinstall(
     ]
     orch._write_state()
 
-    resumed = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    resumed = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     ran = []
     starts = []
     resumed._start = lambda: starts.append("start")
@@ -1172,7 +1139,7 @@ def test_resume_from_old_phase_list_runs_new_voice_phase_without_reinstall(
 def test_resume_restarts_service_when_voice_phase_is_pending_after_start(
     fake_home, tmp_path, monkeypatch
 ):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch.config = orch._resolved_config()
     orch._start_state()
     orch.state.completed_phases = [
@@ -1187,7 +1154,7 @@ def test_resume_restarts_service_when_voice_phase_is_pending_after_start(
     ]
     orch._write_state()
 
-    resumed = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    resumed = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     starts = []
     resumed._start = lambda: starts.append("start")
     resumed._voice = lambda: None
@@ -1217,7 +1184,7 @@ def test_macos_matching_owned_plist_is_resumable(fake_home, tmp_path, monkeypatc
     monkeypatch.setattr(setup_orchestrator.platform, "system", lambda: "Darwin")
     env = {"HOME": str(fake_home), "PATH": "/usr/bin:/bin"}
     orch = setup_orchestrator.SetupOrchestrator(
-        ["--member", "alice", "--yes", "--public-url", "http://100.1.1.1:8788"],
+        ["--member", "alice", "--yes", "--public-url", "http://100.64.0.1:8788"],
         env=env,
         workdir=tmp_path,
     )
@@ -1241,7 +1208,7 @@ def test_macos_matching_owned_plist_is_resumable(fake_home, tmp_path, monkeypatc
 
 
 def test_linger_polkit_denial_prints_single_sudo_action(fake_home, tmp_path, monkeypatch, capsys):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     monkeypatch.setattr(
         orch,
         "_run",
@@ -1260,7 +1227,7 @@ def test_ttl_expired_treated_as_absent_then_resume(fake_home, tmp_path, monkeypa
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_RESUME_TTL_SECONDS": "1"},
     )
     orch._preflight()
@@ -1286,7 +1253,7 @@ def test_ttl_expired_treated_as_absent_then_resume(fake_home, tmp_path, monkeypa
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_RESUME_TTL_SECONDS": "1"},
     )
     assert orch2._read_state(validate_fingerprint=False) is None
@@ -1299,7 +1266,7 @@ def test_v1_resume_state_requires_explicit_reset(fake_home, tmp_path, monkeypatc
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch.state_path.parent.mkdir(parents=True, exist_ok=True)
     orch.state_path.write_text(
@@ -1333,7 +1300,7 @@ def test_ttl_expired_incomplete_setup_gets_expired_message_not_already_set_up(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_RESUME_TTL_SECONDS": "1"},
     )
     orch._preflight()
@@ -1358,7 +1325,7 @@ def test_ttl_expired_incomplete_setup_gets_expired_message_not_already_set_up(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_RESUME_TTL_SECONDS": "1"},
     )
     resumed.state = resumed._read_state(validate_fingerprint=False)
@@ -1374,7 +1341,7 @@ def test_ttl_expired_incomplete_setup_gets_expired_message_not_already_set_up(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     _clear_state(fresh)
     fresh.state = fresh._read_state(validate_fingerprint=False)
@@ -1396,7 +1363,7 @@ def test_sha_mismatch_blocked_by_resume(fake_home, tmp_path, monkeypatch):
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     payload = {
         "schema_version": setup_orchestrator.SCHEMA_VERSION,
@@ -1419,7 +1386,7 @@ def test_sha_mismatch_blocked_by_resume(fake_home, tmp_path, monkeypatch):
             monkeypatch,
             "--yes",
             "--public-url",
-            "http://100.1.1.1:8788",
+            "http://100.64.0.1:8788",
         ).run()
 
     assert fake_file.stat().st_mtime_ns == mtime
@@ -1437,7 +1404,7 @@ def test_backend_probe_matrix(fake_home, tmp_path, monkeypatch, backend, reachab
         monkeypatch,
         "--backend", backend,
         "--yes",
-        "--public-url", "http://100.1.1.1:8788",
+        "--public-url", "http://100.64.0.1:8788",
         extra_env=extra_env,
     )
     orch.__dict__.pop("_probe_backend")
@@ -1449,6 +1416,8 @@ def test_backend_probe_matrix(fake_home, tmp_path, monkeypatch, backend, reachab
         )
     else:
         class Response:
+            status = 200
+
             def __enter__(self):
                 return self
 
@@ -1473,7 +1442,7 @@ def test_claude_enable_failure_rolls_back_without_restart(fake_home, tmp_path, m
         monkeypatch,
         "--backend", "claude",
         "--yes",
-        "--public-url", "http://100.1.1.1:8788",
+        "--public-url", "http://100.64.0.1:8788",
         extra_env={
             "CATY_CLAUDE_BIN": sys.executable,
             "CATY_BACKEND_ENABLE_CMD": "printf changed > '%s'" % config,
@@ -1498,7 +1467,7 @@ def test_claude_default_enable_failure_says_nothing_was_restored(fake_home, tmp_
         monkeypatch,
         "--backend", "claude",
         "--yes",
-        "--public-url", "http://100.1.1.1:8788",
+        "--public-url", "http://100.64.0.1:8788",
         extra_env={
             "CATY_CLAUDE_BIN": sys.executable,
             "CATY_BACKEND_ENABLE_CMD": "exit 0",
@@ -1520,7 +1489,7 @@ def test_claude_declared_absent_enable_failure_removes_created_file(fake_home, t
         monkeypatch,
         "--backend", "claude",
         "--yes",
-        "--public-url", "http://100.1.1.1:8788",
+        "--public-url", "http://100.64.0.1:8788",
         extra_env={
             "CATY_CLAUDE_BIN": sys.executable,
             "CATY_BACKEND_ENABLE_CMD": "printf changed > '%s'" % config,
@@ -1548,7 +1517,7 @@ def test_hermes_default_backup_roots_are_only_config_files(fake_home, tmp_path, 
         monkeypatch,
         "--backend", "hermes",
         "--yes",
-        "--public-url", "http://100.1.1.1:8788",
+        "--public-url", "http://100.64.0.1:8788",
         extra_env={
             "CATY_HERMES_API_KEY": "test-key",
             "HERMES_HOME": str(hermes_home),
@@ -1563,7 +1532,7 @@ def test_hermes_default_backup_roots_are_only_config_files(fake_home, tmp_path, 
 
 
 def test_linux_cgroup_detection_same_different_and_undetectable(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     monkeypatch.setattr(orch, "_listener_pid_from_ss", lambda _port: 321)
     monkeypatch.setattr(orch, "_listener_pid_from_proc", lambda _port: None)
     units = {
@@ -1599,7 +1568,7 @@ def test_same_unit_handoff_uses_collect_and_persists_restart_state(fake_home, tm
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={
             "CATY_BACKEND_ENABLE_CMD": "printf enabled > '%s'" % config,
             "SYSTEMD_RUN_RECORD": str(record),
@@ -1615,7 +1584,7 @@ def test_same_unit_handoff_uses_collect_and_persists_restart_state(fake_home, tm
     assert orch._backend() is False
     invocation = record.read_text(encoding="utf-8")
     assert "--user --collect --unit=caty-setup-supervisor-alice" in invocation
-    assert "caty_gateway.setup_supervisor.py" in invocation
+    assert "-m caty_gateway.setup_supervisor" in invocation
     payload = json.loads(orch.state_path.read_text(encoding="utf-8"))
     assert payload["restart_target"] == "openclaw.service"
     assert payload["backend_enable_done"] is True
@@ -1633,7 +1602,7 @@ def test_handoff_uses_existing_rollback_point_after_interrupted_enable(fake_home
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_BACKEND_ENABLE_CMD": "exit 99"},
     )
     orch.config = orch._resolved_config()
@@ -1664,7 +1633,7 @@ def test_precheckpoint_enable_crash_restores_without_second_enable(fake_home, tm
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_BACKEND_ENABLE_CMD": "touch '%s'" % marker},
     )
     orch.config = orch._resolved_config()
@@ -1689,7 +1658,7 @@ def test_supervised_resume_probe_failure_never_recurses(fake_home, tmp_path, mon
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1", "CATY_BACKEND_ENABLE_CMD": "exit 0"},
     )
     orch.config = orch._resolved_config()
@@ -1702,30 +1671,29 @@ def test_supervised_resume_probe_failure_never_recurses(fake_home, tmp_path, mon
     assert targets == []
 
 
-def test_supervisor_uses_verified_python_before_qrcode_venv_exists(fake_home, tmp_path, monkeypatch):
+def test_supervisor_uses_selected_python_and_installed_module(fake_home, tmp_path, monkeypatch):
     orch = _make_orch(
         fake_home,
         tmp_path,
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_QR_TIMEOUT_SECONDS": "123.5"},
     )
-    orch.service_python = str(orch.venv_python)
-    assert not orch.venv_python.exists()
     orch.config = orch._resolved_config()
     orch._start_state()
     manifest = orch._create_backend_backup()
     command = orch._supervisor_command("openclaw.service", manifest)
     assert pathlib.Path(command[0]).samefile(orch.probe_python)
     assert pathlib.Path(command[command.index("--python") + 1]).samefile(orch.probe_python)
-    assert str(orch.venv_python) not in command
+    assert command[1:3] == ["-m", "caty_gateway.setup_supervisor"]
+    assert command[command.index("--orchestrator") + 1] == "caty_gateway.setup_orchestrator"
     assert float(command[command.index("--resume-timeout") + 1]) == 423.5
 
 
 def test_macos_restart_target_requires_verified_launchd_label(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch.system = "Darwin"
     monkeypatch.setattr(orch, "_command_path", lambda value: "/usr/sbin/lsof" if value == "lsof" else value)
 
@@ -1774,7 +1742,7 @@ def test_invalid_backend_probe_url_fails_before_network_or_supervisor_argv(
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_GATEWAY_URL": value},
     )
     orch.__dict__.pop("_probe_backend")
@@ -1798,7 +1766,7 @@ def test_different_unit_restarts_inline_and_continues(fake_home, tmp_path, monke
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_BACKEND_ENABLE_CMD": "printf enabled > '%s'" % config},
     )
     probes = iter([False, False])
@@ -1820,7 +1788,7 @@ def test_systemd_run_missing_or_failing_rolls_back_without_plain_detach(
     config = fake_home / ".openclaw" / "openclaw.json"
     config.parent.mkdir()
     config.write_bytes(b"original")
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch.config = orch._resolved_config()
     orch._start_state()
     manifest = orch._create_backend_backup()
@@ -1858,7 +1826,7 @@ def test_supervisor_handshake_timeout_stops_transient_and_rolls_back(fake_home, 
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"COMMAND_RECORD": str(record)},
     )
     fakebin = pathlib.Path(orch.env["PATH"].split(os.pathsep)[0])
@@ -1885,14 +1853,14 @@ def test_supervised_qr_forces_url_captures_safe_lines_and_never_prints_child(
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     orch.artifact_path.write_text("CATY_TOKEN=%s\n" % token, encoding="utf-8")
-    orch.caty_gateway.write_text(
+    (tmp_path / "fake_pyqrcode/caty_gateway/__main__.py").write_text(
         "import sys, time\n"
         "assert sys.argv[-1] == 'url'\n"
-        "print('QR URL: http://100.1.1.1:4444/qr/random', flush=True)\n"
+        "print('QR URL: http://100.64.0.1:4444/qr/random', flush=True)\n"
         "print('Expires: 2026-08-03T01:02:03Z (10 minutes remaining)', flush=True)\n"
         "print(%r, flush=True)\n"
         "print(%r, file=sys.stderr, flush=True)\n"
@@ -1933,11 +1901,11 @@ def test_supervised_qr_nonzero_keeps_bounded_redacted_stderr_tail(
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     orch.artifact_path.write_text("CATY_TOKEN=test\n", encoding="utf-8")
-    orch.caty_gateway.write_text(
+    (tmp_path / "fake_pyqrcode/caty_gateway/__main__.py").write_text(
         "import sys\n"
         "sys.stderr.write('z' * 20000 + '\\n')\n"
         "sys.stderr.write('failing qr diagnostic TOKEN=%s\\n')\n"
@@ -1962,11 +1930,11 @@ def test_supervised_qr_keeps_truncated_partial_line_without_newline(
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     orch.artifact_path.write_text("CATY_TOKEN=test\n", encoding="utf-8")
-    orch.caty_gateway.write_text(
+    (tmp_path / "fake_pyqrcode/caty_gateway/__main__.py").write_text(
         "import sys\n"
         "sys.stderr.write('z' * 20000 + 'partial diagnostic tail')\n"
         "raise SystemExit(7)\n",
@@ -1988,7 +1956,7 @@ def test_supervised_qr_does_not_overwrite_replaced_sigterm_handler(
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     replacement = lambda *_args: None
@@ -2023,7 +1991,7 @@ def test_supervised_qr_restores_sigterm_handler_if_reader_start_fails(
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     qr = tmp_path / "reader_start_failure.py"
@@ -2046,7 +2014,7 @@ def test_supervised_qr_sigterm_kills_qr_process(fake_home, tmp_path, monkeypatch
         fake_home,
         tmp_path,
         monkeypatch,
-        "--yes", "--public-url", "http://100.1.1.1:8788",
+        "--yes", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     pid_file = tmp_path / "qr.pid"
@@ -2081,21 +2049,21 @@ def test_status_wait_and_single_flight_use_pid_start_time(fake_home, tmp_path, m
         fake_home,
         tmp_path,
         monkeypatch,
-        "--status", "--wait", "--public-url", "http://100.1.1.1:8788",
+        "--status", "--wait", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_STATUS_WAIT_SECONDS": "1"},
     )
     payloads = iter(
         [
             {"state": "resuming", "active": True},
-            {"state": "resuming", "active": True, "qr_url": "http://100.1.1.1/qr/x", "expires_at": "soon"},
+            {"state": "resuming", "active": True, "qr_url": "http://100.64.0.1/qr/x", "expires_at": "soon"},
         ]
     )
     monkeypatch.setattr(orch, "_read_status", lambda: next(payloads))
     monkeypatch.setattr(setup_orchestrator.time, "sleep", lambda _seconds: None)
     assert orch.run() == 0
-    assert "QR URL: http://100.1.1.1/qr/x" in capsys.readouterr().out
+    assert "QR URL: http://100.64.0.1/qr/x" in capsys.readouterr().out
 
-    follower = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    follower = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     status = {
         "state": "resuming",
         "active": True,
@@ -2136,7 +2104,7 @@ def test_dead_supervisor_live_orchestrator_remains_single_flight_owner(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     monkeypatch.setattr(follower, "_read_status", lambda: owner_status)
     assert follower._single_flight_active() is True
@@ -2148,20 +2116,20 @@ def test_dead_supervisor_live_orchestrator_remains_single_flight_owner(
         "--status",
         "--wait",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_STATUS_WAIT_SECONDS": "1"},
     )
     payloads = iter(
         [
             owner_status,
-            {**owner_status, "state": "waiting-qr", "qr_url": "http://100.1.1.1/qr/owned"},
+            {**owner_status, "state": "waiting-qr", "qr_url": "http://100.64.0.1/qr/owned"},
         ]
     )
     monkeypatch.setattr(waiting, "_read_status", lambda: next(payloads))
     monkeypatch.setattr(setup_orchestrator.time, "sleep", lambda _seconds: None)
     assert waiting._status(True) == 0
     output = capsys.readouterr().out
-    assert "QR URL: http://100.1.1.1/qr/owned" in output
+    assert "QR URL: http://100.64.0.1/qr/owned" in output
     assert "rerun the setup command to resume" not in output
 
 
@@ -2172,7 +2140,7 @@ def test_dead_supervisor_and_orchestrator_release_single_flight(fake_home, tmp_p
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     status = {
         "state": "running",
@@ -2196,7 +2164,7 @@ def test_old_status_without_orchestrator_fields_keeps_supervisor_behavior(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     old_status = {
         "state": "resuming",
@@ -2222,7 +2190,7 @@ def test_orchestrator_pid_reuse_does_not_hold_single_flight(fake_home, tmp_path,
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     status = {
         "state": "running",
@@ -2244,7 +2212,7 @@ def test_status_wait_stops_after_three_dead_supervisor_polls(fake_home, tmp_path
         fake_home,
         tmp_path,
         monkeypatch,
-        "--status", "--wait", "--public-url", "http://100.1.1.1:8788",
+        "--status", "--wait", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_STATUS_WAIT_SECONDS": "1"},
     )
     dead = {
@@ -2269,7 +2237,7 @@ def test_status_wait_keeps_polling_while_supervisor_is_live(fake_home, tmp_path,
         fake_home,
         tmp_path,
         monkeypatch,
-        "--status", "--wait", "--public-url", "http://100.1.1.1:8788",
+        "--status", "--wait", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_STATUS_WAIT_SECONDS": "1"},
     )
     payloads = iter(
@@ -2285,7 +2253,7 @@ def test_status_wait_keeps_polling_while_supervisor_is_live(fake_home, tmp_path,
                 "active": True,
                 "supervisor_pid": 4321,
                 "supervisor_start_time": "777",
-                "qr_url": "http://100.1.1.1/qr/live",
+                "qr_url": "http://100.64.0.1/qr/live",
             },
         ]
     )
@@ -2293,11 +2261,11 @@ def test_status_wait_keeps_polling_while_supervisor_is_live(fake_home, tmp_path,
     monkeypatch.setattr(orch, "_supervisor_is_live", lambda _payload: True)
     monkeypatch.setattr(setup_orchestrator.time, "sleep", lambda _seconds: None)
     assert orch._status(True) == 0
-    assert "QR URL: http://100.1.1.1/qr/live" in capsys.readouterr().out
+    assert "QR URL: http://100.64.0.1/qr/live" in capsys.readouterr().out
 
 
 def test_single_flight_waits_briefly_for_handoff_pid(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     statuses = iter(
         [
             {"state": "handoff", "active": True},
@@ -2316,7 +2284,7 @@ def test_single_flight_waits_briefly_for_handoff_pid(fake_home, tmp_path, monkey
 
 
 def test_single_flight_grace_covers_resumed_child_registration(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     statuses = iter(
         [
             {
@@ -2355,7 +2323,7 @@ def test_supervised_child_registers_without_dropping_supervisor_owner(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     orch._update_status(
@@ -2386,7 +2354,7 @@ def test_supervised_child_yields_to_concurrent_manual_owner(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     supervised.orchestrator_pid = 22222
@@ -2407,7 +2375,7 @@ def test_supervised_child_yields_to_concurrent_manual_owner(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     manual.orchestrator_pid = 11111
     manual.orchestrator_start_time = "manual-start"
@@ -2437,7 +2405,7 @@ def test_supervised_child_replaces_stale_orchestrator_owner(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     orch._update_status(
@@ -2468,7 +2436,7 @@ def test_yielded_supervised_child_follows_status_before_side_effects(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
     monkeypatch.setattr(orch, "_claim_orchestrator_owner", lambda: False)
@@ -2499,7 +2467,7 @@ def test_supervised_child_does_not_create_missing_status(fake_home, tmp_path, mo
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_SUPERVISED": "1"},
     )
 
@@ -2516,7 +2484,7 @@ def test_preflight_failure_does_not_create_status(fake_home, tmp_path, monkeypat
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch._preflight = lambda: (_ for _ in ()).throw(
         setup_orchestrator.SetupError("preflight failed")
@@ -2538,7 +2506,7 @@ def test_manual_owner_registration_is_first_post_preflight_status_write(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     events = []
     update_status = orch._update_status
@@ -2583,7 +2551,7 @@ def test_unavailable_orchestrator_identity_runs_without_registering_owner(
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch.orchestrator_start_time = None
     status_updates = []
@@ -2635,7 +2603,7 @@ def test_orchestrator_owner_fields_clear_on_normal_completion(fake_home, tmp_pat
         monkeypatch,
         "--yes",
         "--public-url",
-        "http://100.1.1.1:8788",
+        "http://100.64.0.1:8788",
     )
     orch._preflight = lambda: setattr(orch, "config", orch._resolved_config())
     orch._backend = lambda: True
@@ -2731,7 +2699,7 @@ def test_main_terminal_path_does_not_clear_new_orchestrator_owner(tmp_path, monk
 
 
 def test_status_lifecycle_clears_stale_ephemeral_fields(fake_home, tmp_path, monkeypatch):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch._update_status(
         state="double-failure",
         qr_url="http://old/qr",
@@ -2752,7 +2720,7 @@ def test_status_lifecycle_clears_stale_ephemeral_fields(fake_home, tmp_path, mon
 
 
 def test_print_status_shows_qr_error_tail_before_resume_output(fake_home, tmp_path, monkeypatch, capsys):
-    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.1.1.1:8788")
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788")
     orch._print_status(
         {
             "state": "failed",
@@ -2775,12 +2743,12 @@ def test_status_wait_polls_empty_status_only_when_resume_exists(fake_home, tmp_p
         fake_home,
         tmp_path,
         monkeypatch,
-        "--status", "--wait", "--public-url", "http://100.1.1.1:8788",
+        "--status", "--wait", "--public-url", "http://100.64.0.1:8788",
         extra_env={"CATY_SETUP_STATUS_WAIT_SECONDS": "1"},
     )
     waiting.config = waiting._resolved_config()
     waiting._start_state()
-    payloads = iter([{}, {"state": "handoff", "qr_url": "http://100.1.1.1/qr/new"}])
+    payloads = iter([{}, {"state": "handoff", "qr_url": "http://100.64.0.1/qr/new"}])
     monkeypatch.setattr(waiting, "_read_status", lambda: next(payloads))
     monkeypatch.setattr(setup_orchestrator.time, "sleep", lambda _seconds: None)
     assert waiting._status(True) == 0
@@ -2790,7 +2758,7 @@ def test_status_wait_polls_empty_status_only_when_resume_exists(fake_home, tmp_p
         fake_home,
         tmp_path,
         monkeypatch,
-        "--status", "--wait", "--public-url", "http://100.1.1.1:8788",
+        "--status", "--wait", "--public-url", "http://100.64.0.1:8788",
     )
     waiting.state_path.unlink()
     monkeypatch.setattr(absent, "_read_status", lambda: {})

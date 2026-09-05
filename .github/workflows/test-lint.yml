@@ -1,0 +1,13 @@
+name: Test + Lint
+on:
+  pull_request:
+permissions: {contents: read}
+concurrency: {group: 'test-lint-${{ github.event.pull_request.number }}', cancel-in-progress: true}
+jobs:
+  test-lint:
+    uses: caty-ai/family-dev-handbook/.github/workflows/reusable-test-lint.yml@ci-v1
+    permissions: {contents: read}
+    with:
+      run_macos: false
+      macos_skip_reason: 'private repo: hosted macOS runners bill 10x; re-enable at public flip (child 3)'
+      pre_test_setup_ubuntu: 'sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg'

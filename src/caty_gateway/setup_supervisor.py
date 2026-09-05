@@ -421,7 +421,7 @@ class Supervisor:
         parser.add_argument("--probe-url", required=True)
         parser.add_argument("--backup-manifest", required=True)
         parser.add_argument("--status-file", required=True)
-        parser.add_argument("--orchestrator", required=True)
+        parser.add_argument("--orchestrator", default="caty_gateway.setup_orchestrator")
         parser.add_argument("--python", required=True)
         parser.add_argument("--parent-pid", type=int)
         parser.add_argument("--parent-start-time")
@@ -566,7 +566,7 @@ class Supervisor:
     def _resume(self) -> subprocess.CompletedProcess:
         child_env = dict(self.env)
         child_env["CATY_SETUP_SUPERVISED"] = "1"
-        command = [self.args.python, self.args.orchestrator, "--member", self.args.member, "--yes"]
+        command = [self.args.python, "-m", self.args.orchestrator, "--member", self.args.member, "--yes"]
         limit = 16384
         tails = {"stdout": bytearray(), "stderr": bytearray()}
         truncated = {"stdout": False, "stderr": False}
@@ -594,7 +594,6 @@ class Supervisor:
             process = subprocess.Popen(
                 command,
                 env=child_env,
-                cwd=str(pathlib.Path(self.args.orchestrator).resolve().parent),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

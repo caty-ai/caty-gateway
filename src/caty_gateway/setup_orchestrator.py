@@ -10,7 +10,6 @@ import argparse
 import datetime
 import getpass
 import hashlib
-import ipaddress
 import json
 import math
 import os
@@ -33,8 +32,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
+from importlib import resources
+from xml.sax.saxutils import escape
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
+from caty_gateway.doctor import Doctor, normalize_backend
 from caty_gateway.setup_redaction import redact
 from caty_gateway.setup_supervisor import (
     SCHEMA_VERSION,
@@ -77,6 +79,10 @@ class SetupError(RuntimeError):
     """An actionable setup failure safe to show after redaction."""
 
 
+class UnsupportedBackendError(SetupError):
+    """An unsupported release option is a CLI usage error."""
+
+
 @dataclass
 class ResumeState:
     schema_version: int
@@ -109,11 +115,13 @@ class SetupOrchestrator:
         self.env = dict(os.environ)
         if env is not None:
             self.env.update(env)
-        self.repo_dir = pathlib.Path(workdir or pathlib.Path(__file__).resolve().parent).resolve()
         self.home = pathlib.Path(self.env.get("HOME", str(pathlib.Path.home()))).expanduser()
         self.system = platform.system()
         self.member = self.args.member
-        self.backend = self.args.backend or self.env.get("CATY_BACKEND", "openclaw")
+        try:
+            self.backend = normalize_backend(self.args.backend or self.env.get("CATY_BACKEND", "openclaw"))
+        except ValueError as exc:
+            raise UnsupportedBackendError(str(exc)) from exc
         self.port = self._resolve_port()
         self.name = self.args.name or self.env.get("CATY_NAME") or self.member
         self.accent = self.args.accent or self.env.get("CATY_ACCENT_COLOR") or "#7FB1FF"
@@ -126,28 +134,14 @@ class SetupOrchestrator:
         self.orchestrator_pid = os.getpid()
         self.orchestrator_start_time = process_start_time(self.orchestrator_pid, self.system)
         self._claim_status: Dict[str, object] = {}
-        self.venv_python = self.repo_dir / ".venv" / "bin" / "python"
-        configured_python = self.env.get("PYTHON") or self.env.get("PYTHON3")
-        if configured_python:
-            self.probe_python = configured_python
-        elif self.venv_python.is_file() and os.access(str(self.venv_python), os.X_OK):
-            self.probe_python = str(self.venv_python)
-        else:
-            self.probe_python = sys.executable
+        self.probe_python = self.env.get("PYTHON") or sys.executable
         self.service_python = self.probe_python
-        self.qrcode_provision_required = False
         self.state: Optional[ResumeState] = None
         self.state_expired = False
-        self.caty_gateway = self.repo_dir / "caty_gateway.py"
-        self.setup_supervisor = self.repo_dir / "caty_gateway.setup_supervisor.py"
-        self.installer_systemd = self.repo_dir / "install-member-service-systemd.sh"
-        self.installer_launchd = self.repo_dir / "install-member-service.sh"
         self.artifact_path, self.service_name = self._platform_paths()
         self.config: Dict[str, object] = {}
         if not MEMBER_RE.fullmatch(self.member) or self.member in {".", ".."}:
             raise SetupError("--member must contain only letters, numbers, dot, underscore, or hyphen")
-        if self.backend not in {"openclaw", "hermes", "claude"}:
-            raise SetupError("CATY_BACKEND must be one of: openclaw, hermes, claude")
         if not 1 <= self.port <= 65535:
             raise SetupError("--port must be between 1 and 65535")
         if self.args.health_timeout <= 0:
@@ -161,7 +155,7 @@ class SetupOrchestrator:
     def _parser() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(description="Install, start, verify, and pair one Caty gateway member")
         parser.add_argument("--member", required=True)
-        parser.add_argument("--backend", choices=("openclaw", "hermes", "claude"))
+        parser.add_argument("--backend")
         parser.add_argument("--port", type=int)
         parser.add_argument("--name")
         parser.add_argument("--accent")
@@ -172,6 +166,7 @@ class SetupOrchestrator:
         parser.add_argument("--health-timeout", type=int, default=30)
         parser.add_argument("--reset", action="store_true", help="Discard resume metadata only")
         parser.add_argument("--status", action="store_true", help="Show setup/supervisor progress")
+        parser.add_argument("--no-history", action="store_true")
         parser.add_argument("--wait", action="store_true", help="Wait for a QR URL or terminal setup state")
         return parser
 
@@ -221,7 +216,6 @@ class SetupOrchestrator:
         try:
             return subprocess.run(
                 list(command),
-                cwd=str(self.repo_dir),
                 env=dict(env or self.env),
                 text=True,
                 stdout=subprocess.PIPE,
@@ -274,7 +268,7 @@ class SetupOrchestrator:
             "qr_delivery": self.qr_delivery,
             "probe_python": self.probe_python,
             "service_python": self.service_python,
-            "workdir": str(self.repo_dir),
+            "no_history": self.args.no_history,
             "artifact_path": str(self.artifact_path),
             "service_name": self.service_name,
         }
@@ -478,7 +472,10 @@ class SetupOrchestrator:
             key, value = stripped.split("=", 1)
             value = value.strip()
             if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+                quote = value[0]
                 value = value[1:-1]
+                if quote == '"':
+                    value = re.sub(r'\\([\\"`$])', r'\1', value)
             values[key.strip()] = value
         return values
 
@@ -518,15 +515,16 @@ class SetupOrchestrator:
         return failures
 
     def _expected_systemd_unit(self) -> bytes:
-        # Mirrors the installer's render_unit sed chain. Known limitation: sed
-        # expands `&` in replacement values while str.replace is literal, so a
-        # WORKDIR/PYTHON path containing `&` makes the byte-compare fail closed
-        # (resume reports a unit collision instead of adopting).
-        template = (self.repo_dir / "systemd" / "caty-gateway.service.template").read_text(encoding="utf-8")
-        rendered = template.replace("__WORKDIR__", str(self.repo_dir))
-        rendered = rendered.replace("__PYTHON__", self.service_python)
-        rendered = rendered.replace("%h", str(self.home))
-        rendered = rendered.replace("%i", self.member)
+        template = resources.files("caty_gateway").joinpath("templates", "systemd.service").read_text(encoding="utf-8")
+        template = template.replace("%i", self.member)
+        # Quote each path for systemd's syntax; escape literal specifiers as well.
+        def quoted(value):
+            return '"' + str(value).replace("%", "%%").replace("\\", "\\\\").replace('"', '\\"') + '"'
+        rendered = template.replace("WorkingDirectory=__WORKDIR__", "WorkingDirectory=" + quoted(self.home))
+        rendered = rendered.replace("__PYTHON__", quoted(self.service_python))
+        rendered = rendered.replace("Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin",
+                                    "Environment=" + quoted("PATH=" + str(self.home) + "/.local/bin:/usr/local/bin:/usr/bin:/bin"))
+        rendered = rendered.replace("EnvironmentFile=%h/.config/caty-gateway/%i.env", "EnvironmentFile=" + quoted(self.artifact_path))
         return (rendered.rstrip("\n") + "\n").encode("utf-8")
 
     def _systemd_unit_matches_expected(self, unit: pathlib.Path) -> bool:
@@ -545,12 +543,12 @@ class SetupOrchestrator:
                 if self.state_expired:
                     return (
                         "an earlier incomplete setup for this member expired (resume TTL); inspect %s — "
-                        "if the service works, run `python3 caty_gateway.py qr` from the installed env; "
+                        "if the service works, run `caty-gateway qr` from the installed env; "
                         "otherwise move the file aside and re-run setup" % self.artifact_path
                     )
                 return (
                     "member appears already set up at %s; to show the pairing QR again run "
-                    "`python3 caty_gateway.py qr` from the installed env (see docs), or move the file aside / "
+                    "`caty-gateway qr` from the installed env (see docs), or move the file aside / "
                     "choose another --member to re-install" % self.artifact_path
                 )
             return "target configuration already exists at %s; choose another --member or move it aside" % self.artifact_path
@@ -564,91 +562,20 @@ class SetupOrchestrator:
 
     def _preflight(self) -> None:
         failures: List[str] = []
-        warnings: List[str] = []
-        if self.system not in {"Darwin", "Linux"}:
-            failures.append("unsupported OS %s; run on macOS or Linux" % self.system)
-
-        python_version = self._python_version(self.probe_python)
-        if python_version is None:
-            failures.append(
-                "service Python is not executable; set PYTHON to a Python 3.9+ interpreter; "
-                "if gateway/.venv is partially created, delete it and rerun"
-            )
-        elif python_version < (3, 9):
-            failures.append("service Python %d.%d is too old; install Python 3.9 or newer" % python_version)
-        elif python_version == (3, 9):
-            warnings.append("service Python 3.9 is supported, but Python 3.10+ is recommended")
-
-        tailscale = self._command_path("tailscale")
-        tailscale_ip: Optional[str] = None
-        if not tailscale:
-            failures.append("tailscale is missing; install it, sign in, and ensure it is on PATH")
-        else:
-            status = self._run([tailscale, "status"])
-            if status.returncode:
-                failures.append("tailscale is not logged in; run `tailscale up` and retry")
-            ip_result = self._run([tailscale, "ip", "-4"])
-            if ip_result.returncode:
-                failures.append("tailscale IPv4 is unavailable; connect this host to a tailnet")
-            else:
-                candidate = next((line.strip() for line in ip_result.stdout.splitlines() if line.strip()), "")
-                try:
-                    ipaddress.IPv4Address(candidate)
-                    tailscale_ip = candidate
-                except ipaddress.AddressValueError:
-                    failures.append("tailscale returned no valid IPv4; repair Tailscale and retry")
-        self._resolve_public_url(tailscale_ip)
-        if not self.public_url:
-            failures.append("Cannot infer --public-url; pass --public-url http://<tailscale-ip>:%d" % self.port)
-        else:
-            parsed_url = urllib.parse.urlsplit(self.public_url)
-            if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
-                failures.append("public URL must be a complete http:// or https:// URL with a host")
-            elif parsed_url.username or parsed_url.password:
-                failures.append("public URL must not contain userinfo; remove the username/password")
-
-        ffmpeg_value = self.env.get("FFMPEG_BIN", "ffmpeg")
-        ffmpeg = self._command_path(ffmpeg_value)
-        if not ffmpeg:
-            failures.append("ffmpeg missing; install it and ensure FFMPEG_BIN/PATH resolves it")
-        else:
-            self.env["FFMPEG_BIN"] = ffmpeg
-            ffprobe_value = self.env.get("FFPROBE_BIN") or str(
-                pathlib.Path(ffmpeg).with_name("ffprobe")
-            )
-            ffprobe = self._command_path(ffprobe_value)
-            if ffprobe:
-                self.env["FFPROBE_BIN"] = ffprobe
-            else:
-                warnings.append(
-                    "ffprobe is missing; voice preview duration checks will be best-effort"
-                )
-
-        if self.backend == "openclaw":
-            value = self.env.get("OPENCLAW_BIN", "openclaw")
-            resolved = self._command_path(value)
-            if not resolved:
-                failures.append("OPENCLAW_BIN is not executable; install OpenClaw or set its absolute path")
-            else:
-                self.env["OPENCLAW_BIN"] = resolved
-        elif self.backend == "claude":
-            value = self.env.get("CATY_CLAUDE_BIN", "claude")
-            resolved = self._command_path(value)
-            if resolved:
-                self.env["CATY_CLAUDE_BIN"] = resolved
-        elif not self.env.get("CATY_HERMES_API_KEY"):
+        if self.backend == "hermes" and not self.env.get("CATY_HERMES_API_KEY"):
             if self._artifact_is_ours():
-                installed_key = self._installed_env().get("CATY_HERMES_API_KEY", "")
-                if installed_key:
-                    self.env["CATY_HERMES_API_KEY"] = installed_key
-            # Secrets entry is the one interaction allowed even under --yes.
+                self.env["CATY_HERMES_API_KEY"] = self._installed_env().get("CATY_HERMES_API_KEY", "")
             if not self.env.get("CATY_HERMES_API_KEY") and not self.args.plan_only and sys.stdin.isatty():
-                entered = getpass.getpass("CATY_HERMES_API_KEY: ")
-                if entered:
-                    self.env["CATY_HERMES_API_KEY"] = entered
-            if not self.env.get("CATY_HERMES_API_KEY"):
-                failures.append("CATY_HERMES_API_KEY is empty; export it (required for Hermes, including QR)")
-
+                self.env["CATY_HERMES_API_KEY"] = getpass.getpass("CATY_HERMES_API_KEY: ")
+        options = {}
+        if self._artifact_is_ours():
+            options["port_available"] = lambda port: True
+        doctor = Doctor(env=self.env, runner=self._run, member=self.member, port=self.port,
+                        public_url=self.public_url, backend=self.backend, python=self.probe_python,
+                        home=self.home, system=self.system, command_path=self._command_path, **options)
+        if not doctor.run():
+            failures.extend(check.name + ": " + check.hint for check in doctor.checks if check.status == "FAIL")
+        self.public_url = doctor.public_url
         if self.system == "Linux":
             systemctl = self._command_path("systemctl")
             loginctl = self._command_path("loginctl")
@@ -664,29 +591,21 @@ class SetupOrchestrator:
                 if manager.returncode and manager_state not in {"running", "degraded", "starting"}:
                     failures.append("systemd user manager is unreachable; verify `systemctl --user is-system-running`")
 
-        self.qrcode_provision_required = not self._has_qrcode(self.probe_python)
-        self.service_python = str(self.venv_python) if self.qrcode_provision_required else self.probe_python
-        if self.qrcode_provision_required:
-            warnings.append("qrcode[pil] is missing; install will provision gateway/.venv")
+        if not self._has_qrcode(self.service_python):
+            failures.append("qrcode[pil] is missing; reinstall caty-gateway with the selected PYTHON interpreter")
         self.config = self._resolved_config()
         failures.extend(self._collision_with_other_members())
         collision = self._member_collision()
         if collision:
             failures.append(collision)
-
         if failures:
             print("Preflight failed (all detected issues):", file=sys.stderr)
             for failure in failures:
-                print("  - " + failure, file=sys.stderr)
+                print("FAIL: " + failure, file=sys.stderr)
             raise SetupError("preflight failed; apply every fix above and rerun")
-        for warning in warnings:
-            print("WARN: " + warning)
+        print("PASS: setup service checks; continue with the resolved plan")
         if self.system == "Linux":
-            print(
-                "Elevation summary: at most one sudo command may be required: "
-                "`sudo loginctl enable-linger <user>` (only if polkit denies self-linger; "
-                "not needed on stock Ubuntu 24.04)"
-            )
+            print("Elevation summary: at most one sudo command may be required: `sudo loginctl enable-linger <user>`")
         else:
             print("Elevation summary: none required.")
 
@@ -701,24 +620,20 @@ class SetupOrchestrator:
         if self.args.reset and self.args.plan_only:
             print("  - would delete resume metadata at %s (--reset)" % self.state_path)
         print("  - write/update resume metadata at %s (0600; deleted on success)" % self.state_path)
-        if self.qrcode_provision_required:
-            print("  - create %s and install qrcode[pil]" % (self.repo_dir / ".venv"))
         if self.system == "Linux":
             unit = self.home / ".config" / "systemd" / "user" / self.service_name
-            print("  - run %s --yes %s" % (self.installer_systemd, self.member))
-            print("  - write %s and %s via the existing installer" % (self.artifact_path, unit))
+            print("  - write %s and %s from package templates" % (self.artifact_path, unit))
             print("  - systemctl --user daemon-reload; enable --now %s" % self.service_name)
             print("  - attempt loginctl enable-linger as the current user")
         else:
-            print("  - run %s with INSTALL_MEMBER_SERVICE_CONFIRM=1" % self.installer_launchd)
-            print("  - write and bootstrap %s via the existing installer" % self.artifact_path)
+            print("  - write and bootstrap %s from package templates" % self.artifact_path)
             print("  - verify launchctl label %s" % self.service_name)
         print("  - poll http://127.0.0.1:%d/health for %ds" % (self.port, self.args.health_timeout))
         print("  - authenticate /identity and require id=%s" % self.member)
         print("  - authenticate /tts/voice-state and require neutral voice readiness when engine=fish")
         print(
-            "  - run %s %s qr --qr-delivery %s with inherited terminal streams"
-            % (self.service_python, self.caty_gateway, self.qr_delivery)
+            "  - run %s -m caty_gateway qr --qr-delivery %s with inherited terminal streams"
+            % (self.service_python, self.qr_delivery)
         )
         print("  CATY_TOKEN: [REDACTED] (generated only during install)")
 
@@ -726,9 +641,12 @@ class SetupOrchestrator:
         if self.backend == "openclaw":
             name = "CATY_GATEWAY_URL"
             value = self.env.get(name, "http://127.0.0.1:18789").rstrip("/")
+        elif self.backend == "openai-compat":
+            name = "CATY_OPENAI_BASE_URL"
+            value = self.env.get(name, "http://127.0.0.1:1234/v1").rstrip("/") + "/models"
         elif self.backend == "hermes":
             name = "CATY_HERMES_URL"
-            value = self.env.get(name, "http://127.0.0.1:8642").rstrip("/")
+            value = self.env.get(name, "http://127.0.0.1:8642").rstrip("/") + "/v1/models"
         else:
             return None
         parsed = urllib.parse.urlsplit(value)
@@ -746,6 +664,10 @@ class SetupOrchestrator:
         return value
 
     def _probe_backend(self) -> bool:
+        if self.backend == "codex":
+            executable = self._command_path("codex")
+            return bool(executable and self._run([executable, "--version"], timeout=10).returncode == 0
+                        and self._run([executable, "login", "status"], timeout=10).returncode == 0)
         if self.backend == "claude":
             executable = self._command_path(self.env.get("CATY_CLAUDE_BIN", "claude"))
             if not executable:
@@ -756,11 +678,13 @@ class SetupOrchestrator:
                 return False
         url = self._backend_probe_url()
         assert url is not None
+        token = self.env.get("CATY_HERMES_API_KEY", "") if self.backend == "hermes" else self.env.get("CATY_OPENAI_API_KEY", "")
+        request = urllib.request.Request(url, headers={"Authorization": "Bearer " + token} if token else {}, method="GET")
         try:
-            with urllib.request.urlopen(url, timeout=2):
-                return True
+            with urllib.request.urlopen(request, timeout=2) as response:
+                return response.status == 200
         except urllib.error.HTTPError:
-            return True  # reachability, not endpoint semantics, is the contract
+            return self.backend == "openclaw"  # The gateway root can require endpoint-specific authorization.
         except (OSError, ValueError, urllib.error.URLError):
             return False
 
@@ -975,7 +899,8 @@ class SetupOrchestrator:
         supervisor_python = self._command_path(self.probe_python) or self.probe_python
         return [
             supervisor_python,
-            str(self.setup_supervisor),
+            "-m",
+            "caty_gateway.setup_supervisor",
             "--member",
             self.member,
             "--target",
@@ -989,7 +914,7 @@ class SetupOrchestrator:
             "--status-file",
             str(self.status_path),
             "--orchestrator",
-            str(pathlib.Path(__file__).resolve()),
+            "caty_gateway.setup_orchestrator",
             "--python",
             supervisor_python,
             "--parent-pid",
@@ -1054,8 +979,7 @@ class SetupOrchestrator:
                 with stdout_path.open("ab", buffering=0) as stdout_handle, stderr_path.open("ab", buffering=0) as stderr_handle:
                     spawned_process = subprocess.Popen(
                         supervisor,
-                        cwd=str(self.repo_dir),
-                        env=self.env,
+                                env=self.env,
                         stdin=subprocess.DEVNULL,
                         stdout=stdout_handle,
                         stderr=stderr_handle,
@@ -1169,7 +1093,7 @@ class SetupOrchestrator:
             if self._probe_backend():
                 self._clear_restart_state()
                 return True
-        if self.backend == "claude":
+        if self.backend in {"claude", "codex", "openai-compat"}:
             restored = self._restore_enable_change(manifest)
             raise SetupError(
                 "Claude backend remained unavailable after enable command; %s"
@@ -1201,46 +1125,82 @@ class SetupOrchestrator:
                     ) from restore_exc
             raise
 
-    def _provision_qrcode(self) -> None:
-        if not self.qrcode_provision_required and self._has_qrcode(self.service_python):
-            return
-        venv_dir = self.repo_dir / ".venv"
-        create = self._run([self.probe_python, "-m", "venv", str(venv_dir)], timeout=120)
-        if create.returncode:
-            raise SetupError("failed to create gateway/.venv: " + redact(create.stderr))
-        pip = venv_dir / "bin" / "pip"
-        install = self._run([str(pip), "install", "qrcode[pil]"], timeout=300)
-        if install.returncode:
-            raise SetupError("failed to install qrcode[pil]: " + redact(install.stderr))
-        if not self._has_qrcode(str(self.venv_python)):
-            raise SetupError("qrcode[pil] provisioning completed but import still fails")
-        self.service_python = str(self.venv_python)
+    def _service_env(self, token: str) -> Dict[str, str]:
+        # Preserve configured runtime settings without capturing shell credentials.
+        values = {key: value for key, value in self.env.items()
+                  if key.startswith(("CATY_", "OPENCLAW_", "OPENAI_", "FISH_", "POYO_", "RENOISE_"))
+                  and not key.startswith("CATY_SETUP_")}
+        for key in ("FFMPEG_BIN", "FFPROBE_BIN", "XDG_STATE_HOME", "ANTHROPIC_API_KEY"):
+            if key in self.env:
+                values[key] = self.env[key]
+        values.update({
+            "PATH": str(self.home / ".local" / "bin") + os.pathsep + self.env.get("PATH", os.defpath),
+            "CATY_ID": self.member, "CATY_GATEWAY_PORT": str(self.port),
+            "CATY_BACKEND": self.backend, "CATY_AGENT": self.env.get("CATY_AGENT", "main"),
+            "CATY_LANG": self.env.get("CATY_LANG", "ja"), "CATY_NAME": self.name,
+            "CATY_ACCENT_COLOR": self.accent, "CATY_TOKEN": token,
+            "CATY_PUBLIC_URL": self.public_url, "CATY_REQUIRE_AUTH": "1",
+        })
+        member_data = self.home / ".local" / "share" / "caty-gateway" / self.member
+        values.setdefault("CATY_ASSET_DIR", str(member_data / "assets"))
+        values.setdefault("CATY_FILLER_DIR", str(member_data / "fillers"))
+        values.setdefault("CATY_CONFIG_DIR", str(self.home / ".config" / "caty-gateway" / self.member))
+        if self.args.no_history:
+            values.pop("CATY_HISTORY_DIR", None)
+        else:
+            root = pathlib.Path(self.env.get("XDG_STATE_HOME", str(self.home / ".local" / "state"))).expanduser()
+            values["CATY_HISTORY_DIR"] = str(root / "caty-gateway" / "history" / self.member)
+        return values
 
-    def _installer_env(self, token: str) -> Dict[str, str]:
-        child = dict(self.env)
-        child.update(
-            {
-                "HOME": str(self.home),
-                "MEMBER_ID": self.member,
-                "PORT": str(self.port),
-                "BACKEND": self.backend,
-                "AGENT": self.env.get("CATY_AGENT", "main"),
-                "NAME": self.name,
-                "ACCENT": self.accent,
-                "TOKEN": token,
-                "PUBLIC_URL": self.public_url,
-                "PYTHON": self.service_python,
-                "WORKDIR": str(self.repo_dir),
-                "INSTALL_MEMBER_SERVICE_CONFIRM": "1",
-                "CATY_SETUP_ORCHESTRATOR": "1",
-            }
-        )
-        if self.system == "Darwin":
-            # The launchd installer renders __LANG__ from $LANG; pin the member
-            # language instead of inheriting the shell locale. The systemd
-            # installer reads CATY_LANG directly, so Linux keeps a valid LANG.
-            child["LANG"] = self.env.get("CATY_LANG", "ja")
-        return child
+    @staticmethod
+    def _write_private(path: pathlib.Path, content: bytes) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary = tempfile.mkstemp(prefix="." + path.name, dir=str(path.parent))
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(content)
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+
+    def _render_service(self, token: str) -> None:
+        values = self._service_env(token)
+        if any(any(char in value for char in "\r\n\0") for value in values.values()):
+            raise SetupError("service environment values must not contain newlines or NUL; remove them and retry")
+        data_root = self.home / ".local" / "share"
+        (data_root / "caty-gateway" / self.member).mkdir(parents=True, exist_ok=True)
+        for key in ("CATY_ASSET_DIR", "CATY_FILLER_DIR", "CATY_CONFIG_DIR", "CATY_HISTORY_DIR"):
+            if values.get(key):
+                pathlib.Path(values[key]).expanduser().mkdir(parents=True, exist_ok=True)
+        if values.get("CATY_ASSET_DIR"):
+            asset_dir = pathlib.Path(values["CATY_ASSET_DIR"]).expanduser()
+            for asset in resources.files("caty_gateway").joinpath("assets").iterdir():
+                target = asset_dir / asset.name
+                if asset.name.endswith(".png") and not target.exists():
+                    self._write_private(target, asset.read_bytes())
+        if self.system == "Linux":
+            unit = self.home / ".config" / "systemd" / "user" / self.service_name
+            if unit.exists() and not self._systemd_unit_matches_expected(unit):
+                raise SetupError("refusing to overwrite a foreign service unit: %s" % unit)
+            # systemd EnvironmentFile double quotes preserve whitespace, $, and #.
+            def quote(value):
+                return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`").replace("$", "\\$") + '"'
+            content = "".join(key + "=" + quote(value) + "\n" for key, value in sorted(values.items()))
+            self._write_private(unit, self._expected_systemd_unit())
+            self._write_private(self.artifact_path, content.encode("utf-8"))
+        else:
+            template = resources.files("caty_gateway").joinpath("templates", "launchd.plist").read_text(encoding="utf-8")
+            replacements = {"MEMBER_ID": self.member, "PYTHON": self.service_python, "WORKDIR": str(self.home),
+                            "LOG_PATH": str(self.home / "Library" / "Logs" / ("caty-gateway-" + self.member + ".log"))}
+            template = re.sub(r"__([A-Z0-9_]+)__", lambda match: escape(replacements.get(match.group(1), "")), template)
+            payload = plistlib.loads(template.encode("utf-8"))
+            payload["EnvironmentVariables"].update(values)
+            # Empty optional placeholders must not override backend defaults.
+            payload["EnvironmentVariables"] = {key: value for key, value in payload["EnvironmentVariables"].items() if value != "" or key in values}
+            (self.home / "Library" / "Logs").mkdir(parents=True, exist_ok=True)
+            self._write_private(self.artifact_path, plistlib.dumps(payload))
 
     def _install(self) -> None:
         if self.artifact_path.exists():
@@ -1248,22 +1208,12 @@ class SetupOrchestrator:
                 raise SetupError("refusing to alter existing target configuration: %s" % self.artifact_path)
             print("Install already completed by this interrupted job; verified artifact ownership.")
             return
-        self._provision_qrcode()
         credential = secrets.token_hex(24)
         assert self.state is not None
         self.state.token_digest = self._token_digest(credential)
         self.state.updated_at = time.time()
         self._write_state()  # persist ownership proof before the installer can write the artifact
-        child_env = self._installer_env(credential)
-        command = [str(self.installer_systemd), "--yes", self.member] if self.system == "Linux" else [str(self.installer_launchd)]
-        result = self._run(command, env=child_env, timeout=180)
-        output = redact((result.stdout or "") + (result.stderr or ""))
-        if output.strip():
-            print(output.rstrip())
-        if result.returncode:
-            raise SetupError("service installer failed; inspect the redacted output above")
-        if not self.artifact_path.is_file():
-            raise SetupError("installer succeeded but did not create %s" % self.artifact_path)
+        self._render_service(credential)
         self.state.env_file_created_by_us = True
         self.state.env_file_sha256 = self._hash_file(self.artifact_path)
         self.state.token_digest = ""
@@ -1317,9 +1267,13 @@ class SetupOrchestrator:
     def _health(self) -> None:
         deadline = time.monotonic() + self.args.health_timeout
         url = "http://127.0.0.1:%d/health" % self.port
+        token = self._identity_token()
+        if not token:
+            raise SetupError("installed service configuration has no CATY_TOKEN")
+        request = urllib.request.Request(url, headers={"Authorization": "Bearer " + token})
         while time.monotonic() < deadline:
             try:
-                with urllib.request.urlopen(url, timeout=2) as response:
+                with urllib.request.urlopen(request, timeout=2) as response:
                     if response.status == 200:
                         return
             except (OSError, urllib.error.URLError):
@@ -1451,7 +1405,6 @@ class SetupOrchestrator:
         try:
             process = subprocess.Popen(
                 list(command),
-                cwd=str(self.repo_dir),
                 env=dict(child),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
@@ -1461,7 +1414,7 @@ class SetupOrchestrator:
                 start_new_session=True,
             )
         except FileNotFoundError as exc:
-            raise SetupError("service Python or caty_gateway.py is missing for QR display") from exc
+            raise SetupError("service Python is unavailable for QR display") from exc
         assert process.stdout is not None and process.stderr is not None
         lines: queue.Queue = queue.Queue(maxsize=128)
         stderr_tail = bytearray()
@@ -1603,7 +1556,8 @@ class SetupOrchestrator:
         supervised = self.env.get("CATY_SETUP_SUPERVISED") == "1"
         command = [
             self.service_python,
-            str(self.caty_gateway),
+            "-m",
+            "caty_gateway",
             "qr",
             "--qr-delivery",
             "url" if supervised else self.qr_delivery,
@@ -1615,15 +1569,14 @@ class SetupOrchestrator:
             try:
                 result = subprocess.run(
                     command,
-                    cwd=str(self.repo_dir),
-                    env=child,
+                        env=child,
                     stdin=None,
                     stdout=None,
                     stderr=None,
                     check=False,
                 )
             except FileNotFoundError as exc:
-                raise SetupError("service Python or caty_gateway.py is missing for QR display") from exc
+                raise SetupError("service Python is unavailable for QR display") from exc
             returncode = result.returncode
         if returncode:
             raise SetupError("QR command exited non-zero; rerun it from the installed service environment")
@@ -1892,7 +1845,8 @@ class SetupOrchestrator:
             return
         config = self.state.resolved_config
         try:
-            self.backend = str(config["backend"])
+            self.backend = normalize_backend(str(config["backend"]))
+            self.args.no_history = bool(config.get("no_history", False))
             self.port = int(config["port"])
             self.name = str(config["name"])
             self.accent = str(config["accent"])
@@ -2091,8 +2045,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             state="failed", active=False, terminal=True,
             message=redact(str(exc)), timeline_entry="setup failed",
         )
-        print("ERROR: " + redact(str(exc)), file=sys.stderr)
-        return 1
+        prefix = "" if isinstance(exc, UnsupportedBackendError) else "ERROR: "
+        print(prefix + redact(str(exc)), file=sys.stderr)
+        return 2 if isinstance(exc, UnsupportedBackendError) else 1
     except KeyboardInterrupt:
         record_terminal(
             state="interrupted", active=False, terminal=True,

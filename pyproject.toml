@@ -15,10 +15,11 @@ dependencies = ["qrcode[pil]"]
 test = ["pytest"]
 
 [project.scripts]
-caty-gateway = "caty_gateway.caty_gateway:main"
+caty-gateway = "caty_gateway.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/caty_gateway"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/caty_gateway", "tests", "README.md", "LICENSE", "CONTRIBUTING.md", "docs", "assets", "tools", ".gitignore", ".gitleaks.toml", ".scrub-allow", "pyproject.toml"]
+include = ["src/caty_gateway", "tests", "README.md", "LICENSE", "CONTRIBUTING.md", "docs", "assets", "tools", ".gitignore", ".gitleaks.toml", ".scrub-allow", "pyproject.toml", "Makefile"]
+exclude = ["/.venv*", "/.omx", "/dist", "**/__pycache__", "**/*.pyc"]

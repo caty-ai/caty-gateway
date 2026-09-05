@@ -73,6 +73,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import Optional
 from urllib.parse import urlparse
 
+if __name__ == "__main__":
+    # Route module execution before backend configuration is evaluated.
+    from caty_gateway.cli import main as cli_main
+    raise SystemExit(cli_main(sys.argv[1:] or ["serve"]))
+
 _DEGRADED_FALLBACK_MP3 = base64.b64decode(
     "SUQzBAAAAAAAIlRTU0UAAAAOAAADTGF2ZjYyLjMuMTAwAAAAAAAAAAAAAAD/84TAAAAAAAAAAAAA"
     "SW5mbwAAAA8AAAAPAAACKABkZGRkZGRvb29vb29venp6enp6hYWFhYWFhZCQkJCQkJCbm5ubm5um"
@@ -5773,14 +5778,17 @@ def lan_ip():
         s.close()
 
 
-def main():
-    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
-        print("usage: caty-gateway [--help] [qr [--qr-delivery MODE] [--wait-visible-seconds SECONDS]]")
-        print("Run the gateway in the foreground, or create a pairing QR code.")
-        return
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] not in ("serve", "qr"):
+        from caty_gateway.cli import main as cli_main
+        return cli_main(argv)
+    if argv and argv[0] == "serve" and len(argv) > 1:
+        from caty_gateway.cli import main as cli_main
+        return cli_main(argv)
     qr_args = None
-    if len(sys.argv) > 1 and sys.argv[1] == "qr":
-        qr_args = _qr_cli_args(sys.argv[2:])
+    if argv and argv[0] == "qr":
+        qr_args = _qr_cli_args(argv[1:])
         try:
             url_delivery = _qr_delivery_mode(qr_args.qr_delivery) == "url"
         except ValueError:
@@ -5792,6 +5800,10 @@ def main():
                 wait_visible_seconds=qr_args.wait_visible_seconds,
             )
             raise SystemExit(0 if result else 1)
+    bind_host = _bind_host()
+    if qr_args is None and not CATY_TOKEN.strip() and bind_host not in ("127.0.0.1", "::1", "localhost"):
+        print("ERROR: CATY_TOKEN must be non-empty for a non-loopback bind; set CATY_TOKEN or bind to 127.0.0.1", file=sys.stderr)
+        raise SystemExit(2)
     try:
         pairing_config = _get_pairing_config()
     except ValueError as error:
@@ -5831,7 +5843,7 @@ def main():
         # it.  §6-2 already routes store unavailability to 503 pairing_disabled,
         # which the handlers do on their own once this stays non-fatal.
         log(f"WARN pairing store unavailable, pairing disabled: {error}")
-    srv = ThreadingHTTPServer((BIND_HOST, PORT), Handler)
+    srv = ThreadingHTTPServer((bind_host, PORT), Handler)
     print("=" * 56)
     print("  Caty gateway")
     print(f"  agent = {AGENT}   STT言語 = {LANG}")
@@ -5845,7 +5857,3 @@ def main():
         srv.serve_forever()
     except KeyboardInterrupt:
         print("\n停止しました")
-
-
-if __name__ == "__main__":
-    main()
