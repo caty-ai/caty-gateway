@@ -11,3 +11,4 @@ assets-*/
 .readme-work/
 .omc/
 __pycache__/
+.scrub-private

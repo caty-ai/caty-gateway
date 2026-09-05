@@ -190,11 +190,21 @@ make gate        # 公開ゲート単体（個人 URL・denylist・selftest）
 ```
 
 - `docs/env.md` は `python tools/env-inventory.py` の生成物です。環境変数を増減したら再生成し、未分類の名前は `tools/env-inventory.py` の分類表に追加します
-- `tools/scrub-audit.sh` は個人名・内部パス・秘密情報らしき文字列を検出します。例外は `.scrub-allow` に理由つきで足します
+- `tools/scrub-audit.sh` は秘密情報らしき文字列を検出します。個人名・内部パスの検出は private リストを読み込んだときだけ働きます（後述「Private scrub list」・CI は公開ルールのみ）。例外は `.scrub-allow` に理由つきで足します
 - `tools/check_publication_gate.py` は公開リポジトリ caty-ai/family-dev-handbook の `templates/publication-gate/` にある正本と byte-identical に vendoring しています。ローカルでは `make gate` で同じ検査が走ります
 - CI は PR ごとに Ubuntu で `make test` / `make lint` を実行します。hosted macOS レーンは公開時に有効化予定で、それまでは skip 理由を caller に明記しています
 
 backend の追加手順は [CONTRIBUTING.md](../CONTRIBUTING.md) にあります。
+
+### Private scrub list
+
+個人名や内部パスの検査リストは、Git 管理外の `<root>/.scrub-private` に置きます。
+別の場所に置く場合は `SCRUB_PRIVATE_FILE` で指定してください。
+`.scrub-private.example` をひな形に、UTF-8 で `[names]`・`[literals]`・`[stems]`・
+`[repos]` の各節へ1行1件、そのままの文字列を書きます。空行と `#` のコメント行は無視します。
+CI にはこのファイルを置かず、公開ルールだけで検査します。リリースチェックリストでは、
+タグを打つ前に手元でリストを読み込ませて `bash tools/scrub-audit.sh .` を実行し、
+指摘がないことを確認します。
 
 ---
 
