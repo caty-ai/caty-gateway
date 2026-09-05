@@ -10,3 +10,5 @@ Tailscale
 ~/\.openclaw/openclaw\.json
 # PROVENANCE table rows contain expected SHA-256 source and output digests.
 assets/PROVENANCE.md	|
+# publish.yml pins every action by its 40-hex commit SHA (supply-chain pin, not a secret).
+.github/workflows/publish.yml	- uses: 
