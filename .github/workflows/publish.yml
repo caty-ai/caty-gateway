@@ -31,7 +31,8 @@ jobs:
           REQUESTED_VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
-          if ! printf '%s' "$REQUESTED_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([abrc]+[0-9]+)?$'; then
+          case "$REQUESTED_VERSION" in *[!0-9a-zA-Z.]*|"") echo "::error::version contains characters outside [0-9a-zA-Z.] (fail-closed)"; exit 1;; esac
+          if ! printf '%s\n' "$REQUESTED_VERSION" | grep -Exq '[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?'; then
             echo "::error::version '$REQUESTED_VERSION' is not a plain SemVer-style version (fail-closed)"
             exit 1
           fi
@@ -84,9 +85,15 @@ jobs:
           python3 -m build
           ls -l dist
           python3 -m twine check --strict dist/*
-          # the archives must carry exactly the requested version and nothing but the package payload
-          for f in dist/*; do case "$f" in *"-$REQUESTED_VERSION"[.-]*) ;; *) echo "::error::unexpected artifact name $f"; exit 1;; esac; done
-          tar tzf dist/*.tar.gz | grep -Ev '^caty_gateway-[^/]+/(src/|README\.md$|LICENSE$|CONTRIBUTING\.md$|pyproject\.toml$|PKG-INFO$|\.gitignore$)' && { echo "::error::sdist contains files outside the allowed payload (see list above)"; exit 1; } || true
+          # exactly these two artifacts, with exactly the requested version
+          sdist="dist/caty_gateway-$REQUESTED_VERSION.tar.gz"
+          wheel="dist/caty_gateway-$REQUESTED_VERSION-py3-none-any.whl"
+          [ "$(ls dist | wc -l)" -eq 2 ] && [ -f "$sdist" ] && [ -f "$wheel" ] || { echo "::error::dist must contain exactly $sdist and $wheel"; ls dist; exit 1; }
+          # the sdist carries nothing but the package payload (tar listing failure is a failure, not a pass)
+          listing="$(tar tzf "$sdist")"
+          bad="$(printf '%s\n' "$listing" | grep -v '/$' | grep -Ev "^caty_gateway-$REQUESTED_VERSION/(src/caty_gateway/|README\.md$|LICENSE$|CONTRIBUTING\.md$|pyproject\.toml$|PKG-INFO$|\.gitignore$)" || true)"
+          if [ -n "$bad" ]; then echo "::error::sdist contains files outside the allowed payload:"; printf '%s\n' "$bad"; exit 1; fi
+          echo "sdist payload ok ($(printf '%s\n' "$listing" | grep -vc '/$') files)"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dist
