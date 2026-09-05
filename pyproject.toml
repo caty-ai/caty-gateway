@@ -10,6 +10,23 @@ requires-python = ">=3.10"
 license = { file = "LICENSE" }
 readme = "README.md"
 dependencies = ["qrcode[pil]"]
+keywords = ["catyphone", "voice", "gateway", "claude-code", "codex", "ollama"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Communications :: Chat",
+]
+
+[project.urls]
+Homepage = "https://caty.talk"
+Repository = "https://github.com/caty-ai/caty-gateway"
+Issues = "https://github.com/caty-ai/caty-gateway/issues"
+Changelog = "https://github.com/caty-ai/caty-gateway/releases"
 
 [project.optional-dependencies]
 test = ["pytest"]
@@ -21,5 +38,7 @@ caty-gateway = "caty_gateway.cli:main"
 packages = ["src/caty_gateway"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/caty_gateway", "tests", "README.md", "LICENSE", "CONTRIBUTING.md", "docs", "assets", "tools", ".gitignore", ".gitleaks.toml", ".scrub-allow", "pyproject.toml", "Makefile"]
-exclude = ["/.venv*", "/.omx", "/dist", "**/__pycache__", "**/*.pyc"]
+# Public sdist = package payload only. Audit tooling, allowlists, docs and assets stay in the repository
+# (review seats 2026-09-06: shipping tools/ and .scrub-allow in a public archive re-publishes scrub policy).
+include = ["src/caty_gateway", "/README.md", "/LICENSE", "/CONTRIBUTING.md", "/pyproject.toml"]
+exclude = ["/.venv*", "/.omx", "/dist", "/.gitignore", "**/__pycache__", "**/*.pyc"]
