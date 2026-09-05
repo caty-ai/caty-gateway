@@ -124,7 +124,7 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | FISH_RETRY_CAP_S | 8.0 | C | public | member env (0600) | src/caty_gateway/tts_fish.py:148; src/caty_gateway/tts_fish.py:211 |
 | FISH_UNHEALTHY_COOLDOWN_S | 20.0 | C | public | member env (0600) | src/caty_gateway/tts_fish.py:62 |
 | HERMES_HOME | expression: str(self.home / '.hermes') | D | local | process-only | src/caty_gateway/setup_orchestrator.py:717 |
-| HOME | expression: str(Path.home()); expression: str(pathlib.Path.home()) | D | local | process-only | src/caty_gateway/cli.py:60; src/caty_gateway/doctor.py:102; src/caty_gateway/setup_orchestrator.py:118 |
+| HOME | None (unset); expression: str(Path.home()); expression: str(pathlib.Path.home()) | D | local | process-only | src/caty_gateway/cli.py:60; src/caty_gateway/doctor.py:102; src/caty_gateway/setup_orchestrator.py:118 |
 | OPENCLAW_BIN | 'openclaw' | B | public | member env (0600) | src/caty_gateway/caty_gateway.py:166; src/caty_gateway/doctor.py:225 |
 | OPENCLAW_GATEWAY_TOKEN | None (unset) | B | secret | member env (0600) | src/caty_gateway/backends/openclaw.py:138; src/caty_gateway/doctor.py:231 |
 | OPENCLAW_HOME | expression: str(self.home / '.openclaw') | D | local | process-only | src/caty_gateway/setup_orchestrator.py:714 |

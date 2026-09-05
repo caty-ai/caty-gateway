@@ -224,6 +224,7 @@ def test_qr_member_failure_is_safe_before_import(system, content, tmp_path, monk
     assert output.out == ''
     assert len(output.err.splitlines()) == 1
     assert 'shell-tok-1' not in output.err
+    assert 'fake-secret' not in output.err
     if system == 'Windows':
         assert output.err.strip() == (
             "ERROR: unsupported platform 'Windows'; "
@@ -235,11 +236,65 @@ def test_qr_member_failure_is_safe_before_import(system, content, tmp_path, monk
             if system == 'Linux'
             else 'Library/LaunchAgents/ai.caty.gateway.fake-member.plist'
         )
-        assert output.err.strip() == (
-            "ERROR: no installed environment for member 'fake-member' at "
-            f'{tmp_path / relative}; '
-            'run caty-gateway setup --member fake-member first'
-        )
+        if content is None:
+            assert output.err.strip() == (
+                "ERROR: no installed environment for member 'fake-member' at "
+                f'{tmp_path / relative}; '
+                'run caty-gateway setup --member fake-member first'
+            )
+        else:
+            assert output.err.strip() == (
+                "ERROR: invalid installed environment for member 'fake-member' at "
+                f'{tmp_path / relative} (unreadable, malformed, or missing CATY_TOKEN); '
+                'rerun caty-gateway setup --member fake-member'
+            )
+
+
+def test_qr_member_empty_home_does_not_read_cwd(tmp_path, monkeypatch, member_runtime, capsys):
+    monkeypatch.setenv('HOME', '')
+    monkeypatch.chdir(tmp_path)
+    home = tmp_path / 'home'
+    monkeypatch.setattr(cli.pathlib.Path, 'home', lambda: home)
+    path = tmp_path / '.config/caty-gateway/fake-member.env'
+    path.parent.mkdir(parents=True)
+    path.write_text('CATY_TOKEN=cwd-tok-1\n', encoding='utf-8')
+
+    assert cli.main(['qr', '--member', 'fake-member']) == 2
+    run, imports = member_runtime
+    run.assert_not_called()
+    assert imports == []
+    output = capsys.readouterr()
+    assert output.out == ''
+    assert output.err.splitlines() == [
+        "ERROR: no installed environment for member 'fake-member' at "
+        f"{home / '.config/caty-gateway/fake-member.env'}; "
+        'run caty-gateway setup --member fake-member first'
+    ]
+    assert 'cwd-tok-1' not in os.environ.values()
+
+
+def test_qr_member_rejects_invalid_identifier(member_runtime, capsys):
+    assert cli.main(['qr', '--member', '../x']) == 2
+    run, imports = member_runtime
+    run.assert_not_called()
+    assert imports == []
+    output = capsys.readouterr()
+    assert output.out == ''
+    assert len(output.err.splitlines()) == 1
+    assert 'invalid member identifier' in output.err
+
+
+def test_qr_member_flag_as_last_argument_exits_cleanly(member_runtime, capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(['qr', '--member'])
+    assert exit_info.value.code == 2
+    run, imports = member_runtime
+    run.assert_not_called()
+    assert imports == []
+    output = capsys.readouterr()
+    assert output.out == ''
+    assert 'expected one argument' in output.err
+    assert 'Traceback' not in output.err
 
 
 def test_legacy_qr_member_directs_to_public_cli(capsys):

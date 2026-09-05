@@ -57,7 +57,7 @@ def main(argv=None):
                 file=sys.stderr,
             )
             return 2
-        home = pathlib.Path(os.environ.get("HOME", str(pathlib.Path.home()))).expanduser()
+        home = pathlib.Path(os.environ.get("HOME") or str(pathlib.Path.home())).expanduser()
         if not MEMBER_RE.fullmatch(args.member) or args.member in {".", ".."}:
             print(
                 f"ERROR: invalid member identifier {args.member!r}; "
@@ -74,8 +74,8 @@ def main(argv=None):
         except Exception:  # Parser errors may contain service secrets; never echo them.
             safe_path = str(path).replace("\r", "\\r").replace("\n", "\\n")
             print(
-                f"ERROR: no installed environment for member {args.member!r} at {safe_path}; "
-                f"run caty-gateway setup --member {args.member} first",
+                f"ERROR: invalid installed environment for member {args.member!r} at {safe_path} (unreadable, malformed, or missing CATY_TOKEN); rerun caty-gateway setup --member {args.member}"
+                if os.path.exists(path) else f"ERROR: no installed environment for member {args.member!r} at {safe_path}; run caty-gateway setup --member {args.member} first",
                 file=sys.stderr,
             )
             return 2
@@ -86,7 +86,7 @@ def main(argv=None):
             option, separator, _ = flag.partition("=")
             if option.startswith("--") and "--member".startswith(option):
                 if not separator:
-                    next(tail)
+                    next(tail, None)
             else:
                 argv.append(flag)
     if args.command == "serve":
