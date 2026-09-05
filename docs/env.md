@@ -114,7 +114,7 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | CATY_VOICE_PREVIEW_TTL_SECONDS | 604800 | C | public | member env (0600) | src/caty_gateway/voice_preview.py:171 |
 | CODEX_HOME | None (unset) | D | local | process-only | src/caty_gateway/backends/generic_cli.py:100 |
 | FFMPEG_BIN | 'ffmpeg' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:167; src/caty_gateway/doctor.py:170; src/caty_gateway/voice_preview.py:56 |
-| FFPROBE_BIN | '' | A | public | member env (0600) | src/caty_gateway/voice_preview.py:57 |
+| FFPROBE_BIN | ''; 'ffprobe' | A | public | member env (0600) | src/caty_gateway/doctor.py:172; src/caty_gateway/voice_preview.py:57 |
 | FISH_API_KEY | '' | C | secret | member env (0600) | src/caty_gateway/tts_fish.py:68; src/caty_gateway/tts_fish.py:72; src/caty_gateway/voice_catalog.py:400; src/caty_gateway/voice_catalog.py:87 |
 | FISH_BASE_URL | 'https://api.fish.audio' | C | public | member env (0600) | src/caty_gateway/tts_fish.py:76 |
 | FISH_LATENCY | 'balanced' | C | public | member env (0600) | src/caty_gateway/tts_fish.py:84 |

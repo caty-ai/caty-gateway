@@ -163,6 +163,7 @@ def test_preflight_aggregates_failures(fake_home, tmp_path, monkeypatch, capsys)
     # remove one required command and public url
     bin_dir = pathlib.Path(orch.env["PATH"].split(":", 1)[0])
     (bin_dir / "ffmpeg").unlink()
+    orch.env["FFMPEG_BIN"] = str(bin_dir / "ffmpeg")
     _write_exec(
         bin_dir / "tailscale",
         """
@@ -199,7 +200,9 @@ def test_preflight_fails_when_ffprobe_is_missing(
         "--public-url",
         "http://100.64.0.1:8788",
     )
-    pathlib.Path(orch.env["PATH"].split(":", 1)[0], "ffprobe").unlink()
+    ffprobe = pathlib.Path(orch.env["PATH"].split(":", 1)[0], "ffprobe")
+    ffprobe.unlink()
+    orch.env["FFPROBE_BIN"] = str(ffprobe)
     with pytest.raises(setup_orchestrator.SetupError, match="preflight failed"):
         orch._preflight()
     assert "ffprobe" in capsys.readouterr().err

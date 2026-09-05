@@ -169,7 +169,7 @@ class Doctor:
         self._check("Python", valid, "install Python 3.10+ and set PYTHON to its executable")
         self._check("ffmpeg", bool(self.command_path(self.env.get("FFMPEG_BIN", "ffmpeg"))),
                     "install ffmpeg and set FFMPEG_BIN or PATH")
-        self._check("ffprobe", bool(self.command_path("ffprobe")), "install ffprobe and add it to PATH")
+        self._check("ffprobe", bool(self.command_path(self.env.get("FFPROBE_BIN", "ffprobe"))), "install ffprobe and add it to PATH")
         tailscale = self.command_path("tailscale")
         self._check("tailscale executable", bool(tailscale), "install Tailscale and add tailscale to PATH")
         if tailscale:

@@ -95,6 +95,52 @@ def test_missing_required_binaries_fail(harness, name):
     assert not doctor.Doctor(backend="codex", **options).run()
 
 
+@pytest.mark.parametrize("name", ["ffmpeg", "ffprobe"])
+@pytest.mark.parametrize("state", ["missing", "non-executable", "executable"])
+def test_media_binary_absolute_override_is_authoritative(harness, tmp_path, name, state):
+    options, _, _, _ = harness
+    options.pop("command_path")  # Exercise real filesystem lookup.
+    bin_dir = tmp_path / "fake-bin"
+    bin_dir.mkdir()
+    fallback = bin_dir / name
+    fallback.write_text("#!/bin/sh\nexit 0\n")
+    fallback.chmod(0o755)
+    override = tmp_path / name
+    if state != "missing":
+        override.write_text("#!/bin/sh\nexit 0\n")
+        override.chmod(0o755 if state == "executable" else 0o644)
+    options["env"].update(PATH=str(bin_dir), **{name.upper() + "_BIN": str(override)})
+    instance = doctor.Doctor(backend="codex", **options)
+    instance._common()
+    assert next(c.status for c in instance.checks if c.name == name) == (
+        "PASS" if state == "executable" else "FAIL"
+    )
+
+
+@pytest.mark.parametrize("name", ["ffmpeg", "ffprobe"])
+@pytest.mark.parametrize("on_path", [False, True])
+def test_media_binary_relative_override_resolves_only_on_path(
+    harness, tmp_path, monkeypatch, name, on_path
+):
+    options, _, _, _ = harness
+    options.pop("command_path")
+    bin_dir = tmp_path / "fake-bin"
+    bin_dir.mkdir()
+    command = "fake-custom-" + name
+    local = tmp_path / command
+    local.write_text("#!/bin/sh\nexit 0\n")
+    local.chmod(0o755)
+    monkeypatch.chdir(tmp_path)
+    if on_path:
+        (bin_dir / command).symlink_to(local)
+    options["env"].update(PATH=str(bin_dir), **{name.upper() + "_BIN": command})
+    instance = doctor.Doctor(backend="codex", **options)
+    instance._common()
+    assert next(c.status for c in instance.checks if c.name == name) == (
+        "PASS" if on_path else "FAIL"
+    )
+
+
 @pytest.mark.parametrize("failure", ["login", "ipv4", "codex-login", "timeout"])
 def test_failed_passive_commands_fail(harness, failure):
     options, _, _, _ = harness
