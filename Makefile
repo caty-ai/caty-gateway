@@ -5,7 +5,8 @@ PYTHON ?= python3
 test:
 	@tmp=$$(mktemp) || exit 2; trap 'rm -f "$$tmp"' 0; \
 	status=0; $(PYTHON) -B -m pytest tests -q -p no:cacheprovider --junitxml="$$tmp" || status=$$?; \
-	$(PYTHON) -B tools/suite_summary.py "$$tmp"; exit "$$status"
+	summary=0; $(PYTHON) -B tools/suite_summary.py "$$tmp" || summary=$$?; \
+	[ "$$status" -ne 0 ] || status=$$summary; exit "$$status"
 	bash tools/scrub-audit.sh .
 	$(MAKE) env-check
 	$(MAKE) gate

@@ -15,14 +15,18 @@ jobs:
         src/caty_gateway/fish_tts_contract.py
         src/caty_gateway/backends/openai_compat.py
         src/caty_gateway/vision_describer.py
-      # anything that sends bytes off the machine: backends, push, TTS/vision calls, voice preview
+        src/caty_gateway/avatar_engine.py
+      # anything that sends bytes off the machine: backends, push, TTS/vision/avatar calls, voice preview
       risk_paths_outbound: |
         src/caty_gateway/backends/**
         src/caty_gateway/caty_push.py
         src/caty_gateway/push_events.py
         src/caty_gateway/tts_fish.py
         src/caty_gateway/vision_describer.py
+        src/caty_gateway/avatar_engine.py
         src/caty_gateway/voice_preview.py
+        src/caty_gateway/voice_catalog.py
+        src/caty_gateway/setup_supervisor.py
         src/caty_gateway/doctor.py
       # CI gates, publication gate, scrub allowlist, packaging manifest
       risk_paths_gates: |
