@@ -1,0 +1,40 @@
+name: Backend request
+description: Ask for, or offer to add, support for another AI backend
+labels: ["enhancement", "component:backends"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CONTRIBUTING.md describes the two backend shapes. Per-turn CLI tools usually need one preset entry; resident HTTP servers need one module.
+  - type: input
+    id: tool
+    attributes:
+      label: Tool name and version
+      placeholder: e.g. opencode 1.2.3
+    validations:
+      required: true
+  - type: dropdown
+    id: shape
+    attributes:
+      label: How is it driven?
+      options:
+        - One prompt per process, can resume a session by id (per-turn CLI)
+        - Resident server with an OpenAI-compatible HTTP API
+        - Resident server with its own HTTP API
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Commands or endpoints
+      description: The command to start a new session, the command to resume one, and how the reply is printed (JSON, plain text). For HTTP, the base URL and the model-list endpoint.
+    validations:
+      required: true
+  - type: checkboxes
+    id: offer
+    attributes:
+      label: Contribution
+      options:
+        - label: I can open a pull request for this backend
+        - label: I can test a pull request on my machine and attach a smoke record
