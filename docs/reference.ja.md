@@ -88,7 +88,7 @@ caty-gateway setup --member MEMBER [--backend BACKEND] [--port PORT] [--name NAM
 | 合言葉の期限 | 600 秒（`CATY_PAIRING_TTL_SECONDS`） |
 | 消費 | at-most-once。成功で削除し consumed 墓標を残す |
 | 受付元 | loopback・tailnet IPv4 `100.64.0.0/10`・Tailscale IPv6 ULA `fd7a:115c:a1e0::/48` |
-| 連続失敗 | 5 回で 60 秒ロックアウト、累計 50 回で失効 |
+| 連続失敗 | 5 回で 60 秒ロックアウト、累計 50 回で無効化（401） |
 | レート | 60 秒固定窓（`CATY_PAIRING_RATE_PER_MIN`） |
 | ストア | ディスク正。root 0700・レコード 0600・secret は SHA-256 のみ保存・原子的置換 |
 | 1 メンバーあたり | 生きた合言葉は 1 つ。新規発行は旧を失効させる |

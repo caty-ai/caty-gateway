@@ -17,7 +17,7 @@
 [できること](#what) ｜ [必要なもの](#requirements) ｜ [使いはじめる](#start) ｜ [安心の理由](#safety) ｜ [困ったとき](#troubleshooting) ｜ [もっと詳しく](#more)
 
 パソコンの前を離れても、いつもの AI に iPhone から話しかけて、<br>
-続きを頼んだり、写真や画面を見せたりできます。会話はあなたの機器の外に出ません。
+続きを頼んだり、写真や画面を見せたりできます。会話は、あなたが選んだ AI 以外には送られません。
 
 **いつもの AI を、ポケットに連れて出る。**
 
@@ -72,9 +72,9 @@ flowchart LR
 
   AI 側の設定や作業フォルダは変えません。Claude Code や Codex CLI など、ふだん使っている CLI を裏で呼ぶだけです。
 
-- 🔒 **会話は機器の外に出ない**
+- 🔒 **会話は、選んだ AI 以外に送らない**
 
-  iPhone とパソコンの通信は Tailscale の私設ネットワークの中だけ。会話の記録もあなたのパソコンに置かれます。
+  iPhone とパソコンの通信は Tailscale の私設ネットワークの中だけ。gateway 自体は会話をどこにも送らず、記録はあなたのパソコンに置かれます。AI がクラウドを使う場合（Claude Code や Codex CLI など）は、その AI の普段どおりの通信になります。
 
 パソコン側に必要なものは 3 つだけです。
 
@@ -121,7 +121,7 @@ flowchart LR
 | Tailscale にログイン済み | `tailscale status` | [tailscale.com](https://tailscale.com/) で無料アカウントを作り、パソコンと iPhone の両方でログイン |
 | ffmpeg | `ffmpeg -version` | macOS: `brew install ffmpeg` ／ Linux: `apt install ffmpeg` |
 
-Tailscale は、あなたの機器同士だけをつなぐ私設ネットワークを作る無料のアプリです。caty-gateway は **iPhone とパソコンが同じ Tailscale ネットワークにいること**を前提にしていて、それ以外の経路からの接続は受け付けません。
+Tailscale は、あなたの機器同士だけをつなぐ私設ネットワークを作る無料のアプリです。caty-gateway は **iPhone とパソコンが同じ Tailscale ネットワークにいること**を前提にしていて、ペアリング（QR の読み取り）はそれ以外の経路から受け付けません。ペアリング後の通信は、そのとき渡される鍵（token）で守られます。
 
 揃ったら、コマンド 1 行から始めます。
 
@@ -222,9 +222,9 @@ caty-gateway は「入口」だけを担当し、AI にも会話にも余計な�
 
   `doctor` はバージョンやログイン状態を確認するだけで、AI にプロンプトを送りません（利用枠を消費しません）
 
-- **私設ネットワークの外から入れない**
+- **ペアリングは私設ネットワークの中だけ**
 
-  ペアリングの受付は、Tailscale のネットワーク内か、パソコン自身からの接続だけです
+  ペアリングの受付は、Tailscale のネットワーク内か、パソコン自身からの接続だけです。ペアリング後のすべての通信は鍵（token）が無いと拒否されます
 
 - **QR に長期の鍵は載らない**
 
@@ -234,7 +234,7 @@ caty-gateway は「入口」だけを担当し、AI にも会話にも余計な�
 
   会話の記録は `~/.local/state/caty-gateway/history/<名前>/` に置かれ、フォルダを消せば消えます
 
-外部に送られるものは、音声の読み上げやアバター生成などの**任意機能を自分で有効にしたときだけ**です。どの機能が何を送るかは [プライバシー](docs/privacy.md) に書いてあります。
+gateway が会話を送る先は、あなたが選んだ AI だけです。それ以外に外部へ送られるものは、音声の読み上げやアバター生成などの**任意機能を自分で有効にしたときだけ**です。どの機能が何を送るかは [プライバシー](docs/privacy.md) に書いてあります。
 
 <details>
 <summary>やめたいとき（丸ごと消す手順）</summary>
@@ -243,7 +243,7 @@ caty-gateway は「入口」だけを担当し、AI にも会話にも余計な�
 2. 設定と記録のフォルダを消す: `~/.config/caty-gateway/`、`~/.local/state/caty-gateway/`、`~/.local/share/caty-gateway/`
 3. 本体を消す: `uv tool uninstall caty-gateway`（pipx なら `pipx uninstall caty-gateway`）
 
-AI 側には何も残りません。
+gateway が AI 側に作ったものはありません。会話は AI 自身の履歴（Claude Code や Codex CLI のセッション）としては残るので、それも消したい場合は各 AI の手順で消します。
 
 </details>
 
@@ -334,6 +334,6 @@ backend の追加や修正は、次の手順で歓迎します。
 
 <div align="center">
 
-**コマンド 1 行** ｜ **いつもの AI をそのまま** ｜ **会話は機器の外に出ない**
+**コマンド 1 行** ｜ **いつもの AI をそのまま** ｜ **会話は選んだ AI 以外に送らない**
 
 </div>

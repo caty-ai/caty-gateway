@@ -99,7 +99,7 @@ Issue ラベルの `component:*` は、この表の行と 1 対 1 です。
 
 ## サービス運用
 
-`setup` はパッケージ同梱のテンプレートを描画して、ユーザー権限のサービスを 1 メンバー 1 つ作ります。root 権限は要りません。
+`setup` はパッケージ同梱のテンプレートを描画して、ユーザー権限のサービスを 1 メンバー 1 つ作ります。macOS では root 権限は要りません。Linux では `loginctl enable-linger` に `sudo` が要るホストがあり、拒否されると `setup` がその旨を表示します。
 
 | | macOS（launchd） | Linux（systemd --user） |
 |---|---|---|
@@ -152,7 +152,7 @@ caty-gateway qr
 2. 上の保存先 5 つを削除（`~/.config/caty-gateway/` `~/.local/state/caty-gateway/` `~/.local/share/caty-gateway/` を丸ごと消せば足ります）
 3. `uv tool uninstall caty-gateway`（pipx なら `pipx uninstall caty-gateway`）
 
-backend 側（Claude Code の設定・作業ディレクトリなど）には何も書いていないので、そちらの後始末はありません。
+backend 側の設定・作業ディレクトリには何も書いていません。会話は backend 自身のセッション記録（Claude Code のローカル会話ストア・Codex CLI の `~/.codex/sessions`）には残るので、必要ならそちらで消します。
 
 ---
 

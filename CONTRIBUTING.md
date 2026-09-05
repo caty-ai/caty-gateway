@@ -31,7 +31,7 @@ For a resident server with an HTTP API, add `src/caty_gateway/backends/<name>.py
 
 - Subclass `Backend` from `backends/base.py` and implement the abstract methods `generate()` and `stream()`. Override `supports_stream()` to return `True` only if you implement streaming (the base implementation returns `False`). There is no `health()` abstract; preflight belongs in `doctor.py`.
 - Name environment variables `CATY_<NAME>_URL` and `CATY_<NAME>_API_KEY`. Register them in `tools/env-inventory.py` so `make env-check` classifies them, then regenerate `docs/env.md`.
-- Contract test: `caty-gateway doctor --backend <name>` must instantiate the backend and reach its model-list endpoint passively.
+- Contract test: `caty-gateway doctor --backend <name>` must pass with the server running, using passive checks only (key present, model-list endpoint reachable), the way the `hermes` and `openai-compat` rows in `doctor.py` do.
 - Follow steps 4 and 5 above for the README row and the optional smoke record.
 
 ## Sending a fix

@@ -88,10 +88,10 @@ The source of truth is [contracts/pairing-v1.md](contracts/pairing-v1.md). Only 
 | Passphrase expiry | 600 seconds (`CATY_PAIRING_TTL_SECONDS`) |
 | Consumption | At-most-once. Deleted on success, leaving a consumed tombstone |
 | Accepted sources | loopback, tailnet IPv4 `100.64.0.0/10`, Tailscale IPv6 ULA `fd7a:115c:a1e0::/48` |
-| Consecutive failures | 60-second lockout after 5, expiry after 50 cumulative |
+| Consecutive failures | 60-second lockout after 5, revoked (401) after 50 cumulative |
 | Rate | Fixed 60-second window (`CATY_PAIRING_RATE_PER_MIN`) |
 | Store | Disk-authoritative. Root 0700, records 0600, secret stored only as SHA-256, atomic replacement |
-| Per member | One live passphrase. Issuing a new one expires the old one |
+| Per member | One live passphrase. Issuing a new one revokes and removes the old one |
 
 `CATY_PAIRING_ALLOW_NONTAILNET=1` is an unsupported switch that only removes the source restriction on claim; the restrictions on the QR-delivery side (IPv4 only, does not accept IPv6 ULA) are unchanged.
 

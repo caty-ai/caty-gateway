@@ -17,7 +17,7 @@
 [What it does](#what) ｜ [What you need](#requirements) ｜ [Getting started](#start) ｜ [Why it is safe](#safety) ｜ [When something goes wrong](#troubleshooting) ｜ [Learn more](#more)
 
 Step away from your computer and you can still talk to your usual AI from your iPhone,<br/>
-ask it to keep going, or show it a photo or your screen. Conversations never leave your own devices.
+ask it to keep going, or show it a photo or your screen. Conversations go to the AI you chose, and nowhere else.
 
 **Take your usual AI with you, in your pocket.**
 
@@ -72,9 +72,9 @@ flowchart LR
 
   It doesn't change your AI's settings or working folder. It simply calls the CLI you already use, like Claude Code or Codex CLI, in the background.
 
-- 🔒 **Conversations never leave your devices**
+- 🔒 **Conversations go only to the AI you chose**
 
-  Traffic between your iPhone and computer stays inside your private Tailscale network. Conversation history is also kept on your own computer.
+  Traffic between your iPhone and computer stays inside your private Tailscale network. The gateway itself sends the conversation nowhere, and history is kept on your own computer. If your AI uses the cloud (Claude Code, Codex CLI and the like), that is the same traffic that AI always has.
 
 On the computer side you only need three things.
 
@@ -121,7 +121,7 @@ A "backend" is the AI that caty-gateway talks to behind the scenes. You choose i
 | Logged in to Tailscale | `tailscale status` | Create a free account at [tailscale.com](https://tailscale.com/) and log in on both your computer and your iPhone |
 | ffmpeg | `ffmpeg -version` | macOS: `brew install ffmpeg` ／ Linux: `apt install ffmpeg` |
 
-Tailscale is a free app that creates a private network connecting only your own devices to each other. caty-gateway assumes **your iPhone and computer are on the same Tailscale network**, and does not accept connections from any other route.
+Tailscale is a free app that creates a private network connecting only your own devices to each other. caty-gateway assumes **your iPhone and computer are on the same Tailscale network**, and pairing (scanning the QR) is not accepted from any other route. After pairing, every request is protected by the key (token) handed over at that moment.
 
 Once you have these, you can get started with a single command.
 
@@ -222,9 +222,9 @@ caty-gateway only handles the "front door" — it doesn't do anything extra to y
 
   `doctor` only checks version numbers and login status; it never sends a prompt to your AI (so it never uses up any of your usage quota)
 
-- **Nothing gets in from outside your private network**
+- **Pairing only happens inside your private network**
 
-  pairing requests are only accepted from inside your Tailscale network, or from the computer itself
+  pairing requests are only accepted from inside your Tailscale network, or from the computer itself. After pairing, every request without the key (token) is refused
 
 - **The QR code never carries a long-lived key**
 
@@ -234,7 +234,7 @@ caty-gateway only handles the "front door" — it doesn't do anything extra to y
 
   conversation history is stored at `~/.local/state/caty-gateway/history/<name>/`, and deleting that folder deletes it
 
-Nothing is ever sent externally, except for **optional features you turn on yourself**, such as text-to-speech or avatar generation. Which features send what is documented in [privacy](docs/privacy.md).
+The gateway sends the conversation only to the AI you chose. Beyond that, nothing goes out except for **optional features you turn on yourself**, such as text-to-speech or avatar generation. Which features send what is documented in [privacy](docs/privacy.md).
 
 <details>
 <summary>If you want to stop using it (full removal steps)</summary>
@@ -243,7 +243,7 @@ Nothing is ever sent externally, except for **optional features you turn on your
 2. Delete the config and history folders: `~/.config/caty-gateway/`, `~/.local/state/caty-gateway/`, `~/.local/share/caty-gateway/`
 3. Remove the program itself: `uv tool uninstall caty-gateway` (or `pipx uninstall caty-gateway`)
 
-Nothing is left behind on the AI's side.
+The gateway creates nothing on the AI's side. The conversation does remain as that AI's own history (Claude Code or Codex CLI sessions); delete it there if you want it gone too.
 
 </details>
 
@@ -334,6 +334,6 @@ Setup steps, test conventions, and the review process are in [CONTRIBUTING.md](C
 
 <div align="center">
 
-**One command** ｜ **Your usual AI, unchanged** ｜ **Conversations never leave your devices**
+**One command** ｜ **Your usual AI, unchanged** ｜ **Conversations go only to the AI you chose**
 
 </div>

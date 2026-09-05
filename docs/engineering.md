@@ -99,7 +99,7 @@ The `component:*` Issue labels correspond one-to-one with the rows of this table
 
 ## Service operation
 
-`setup` renders a template bundled in the package and creates one user-level service per member. Root privileges are not required.
+`setup` renders a template bundled in the package and creates one user-level service per member. Root privileges are not required on macOS. On Linux, `loginctl enable-linger` may need `sudo` on some hosts; `setup` says so when it is denied.
 
 | | macOS (launchd) | Linux (systemd --user) |
 |---|---|---|
@@ -152,7 +152,7 @@ A `qr --member <id>` option that loads the environment automatically is tracked 
 2. Delete the five storage locations above (removing `~/.config/caty-gateway/`, `~/.local/state/caty-gateway/` and `~/.local/share/caty-gateway/` entirely is enough)
 3. `uv tool uninstall caty-gateway` (or `pipx uninstall caty-gateway` for pipx)
 
-Nothing is written into the backend side (such as Claude Code's configuration or working directory), so there is no cleanup to do there.
+The gateway writes nothing into the backend's configuration or working directory. The conversation does remain in the backend's own session store (Claude Code's local conversation store; `~/.codex/sessions` for Codex CLI); remove it there if required.
 
 ---
 

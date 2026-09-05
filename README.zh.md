@@ -17,7 +17,7 @@
 [能做什么](#what) ｜ [需要准备什么](#requirements) ｜ [开始使用](#start) ｜ [为什么放心](#safety) ｜ [遇到问题](#troubleshooting) ｜ [了解更多](#more)
 
 即使离开电脑，也能用 iPhone 对着平时用的 AI 说话，<br>
-让它继续手头的工作，或者把照片、屏幕内容拿给它看。对话内容不会离开你的设备。
+让它继续手头的工作，或者把照片、屏幕内容拿给它看。对话只会发送给你选定的 AI，不会发往其他任何地方。
 
 **把平时用的 AI，装进口袋随身带走。**
 
@@ -72,9 +72,9 @@ flowchart LR
 
   不会改动 AI 那一侧的设置或工作目录，只是在后台调用你平常使用的 CLI，比如 Claude Code 或 Codex CLI。
 
-- 🔒 **对话不会离开设备**
+- 🔒 **对话只发送给你选定的 AI**
 
-  iPhone 与电脑之间的通信，只经过 Tailscale 的私有网络。对话记录也保存在你自己的电脑上。
+  iPhone 与电脑之间的通信，只经过 Tailscale 的私有网络。gateway 本身不会把对话发送到任何地方，记录保存在你自己的电脑上。如果你的 AI 使用云端（如 Claude Code、Codex CLI），那就是该 AI 平时本来就有的通信。
 
 电脑这一侧只需要准备 3 样东西。
 
@@ -121,7 +121,7 @@ flowchart LR
 | 已登录 Tailscale | `tailscale status` | 前往 [tailscale.com](https://tailscale.com/) 注册免费账号，在电脑和 iPhone 两端都登录 |
 | ffmpeg | `ffmpeg -version` | macOS: `brew install ffmpeg` ／ Linux: `apt install ffmpeg` |
 
-Tailscale 是一款免费应用，用来搭建只连接你自己设备之间的私有网络。caty-gateway 的前提是 **iPhone 和电脑处于同一个 Tailscale 网络中**，不接受来自其他途径的连接。
+Tailscale 是一款免费应用，用来搭建只连接你自己设备之间的私有网络。caty-gateway 的前提是 **iPhone 和电脑处于同一个 Tailscale 网络中**，配对（扫描二维码）不接受来自其他途径的连接。配对之后的每次通信，都由当时交付的密钥（token）保护。
 
 准备齐全后，只需一行命令即可开始。
 
@@ -222,9 +222,9 @@ caty-gateway 只负责「入口」这一件事，不会对 AI 或对话做任何
 
   `doctor` 只确认版本和登录状态，不会向 AI 发送提示词（不消耗使用额度）
 
-- **无法从私有网络之外进入**
+- **配对只在私有网络内进行**
 
-  配对请求只接受来自 Tailscale 网络内部，或电脑自身发起的连接
+  配对请求只接受来自 Tailscale 网络内部，或电脑自身发起的连接。配对之后，没有密钥（token）的请求一律拒绝
 
 - **二维码中不含长期密钥**
 
@@ -234,7 +234,7 @@ caty-gateway 只负责「入口」这一件事，不会对 AI 或对话做任何
 
   对话记录存放在 `~/.local/state/caty-gateway/history/<名字>/`，删除该文件夹即可清除
 
-会被发送到外部的内容，只有在你**自己主动开启语音朗读、头像生成等可选功能时**才会产生。哪些功能会发送什么内容，写在[隐私说明](docs/privacy.md)里。
+gateway 只会把对话发送给你选定的 AI。除此之外，只有在你**自己主动开启语音朗读、头像生成等可选功能时**才会有内容发送到外部。哪些功能会发送什么内容，写在[隐私说明](docs/privacy.md)里。
 
 <details>
 <summary>想要卸载时（彻底删除的步骤）</summary>
@@ -243,7 +243,7 @@ caty-gateway 只负责「入口」这一件事，不会对 AI 或对话做任何
 2. 删除配置和记录文件夹：`~/.config/caty-gateway/`、`~/.local/state/caty-gateway/`、`~/.local/share/caty-gateway/`
 3. 卸载本体：`uv tool uninstall caty-gateway`（使用 pipx 的话是 `pipx uninstall caty-gateway`）
 
-AI 那一侧不会留下任何痕迹。
+gateway 不会在 AI 那一侧创建任何东西。对话会作为该 AI 自己的历史（Claude Code、Codex CLI 的会话）保留，如果也想删除，请按各 AI 的方法处理。
 
 </details>
 
@@ -334,6 +334,6 @@ AI 那一侧不会留下任何痕迹。
 
 <div align="center">
 
-**一行命令** ｜ **原样使用平时的 AI** ｜ **对话不会离开设备**
+**一行命令** ｜ **原样使用平时的 AI** ｜ **对话只发送给你选定的 AI**
 
 </div>
