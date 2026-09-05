@@ -7,13 +7,17 @@ import socket
 import subprocess
 import sys
 import time
+import warnings
 from pathlib import Path
 
 
 GATEWAY_COMMAND = [sys.executable, "-m", "caty_gateway.caty_gateway"]
 TEST_AGENT = "pairing-process-e2e"
 TEST_TOKEN = "process-e2e-" + "token-1128"
-START_TIMEOUT_SECONDS = 8.0
+# #13: hosted macOS runners stall in HTTPServer.server_bind -> socket.getfqdn before
+# listen(); the old 8 s budget only covered local hosts and the ubuntu runner.
+START_TIMEOUT_SECONDS = 60.0
+READINESS_WARN_SECONDS = 2.0
 
 
 class GatewayStartError(AssertionError):
@@ -87,6 +91,7 @@ def _terminate_and_capture(process):
 
 
 def _spawn_and_wait_ready(env, port):
+    started_at = time.monotonic()
     process = subprocess.Popen(
         GATEWAY_COMMAND,
         env=env,
@@ -96,7 +101,9 @@ def _spawn_and_wait_ready(env, port):
     )
     ready = False
     try:
-        deadline = time.monotonic() + START_TIMEOUT_SECONDS
+        deadline = started_at + START_TIMEOUT_SECONDS
+        probes = 0
+        first_observation = "no response"
         last_observation = "no response"
         while time.monotonic() < deadline:
             if process.poll() is not None:
@@ -106,29 +113,48 @@ def _spawn_and_wait_ready(env, port):
                     f"rc={process.returncode} stdout={stdout!r} stderr={stderr!r}",
                     stderr,
                 )
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            probes += 1
             try:
                 status, payload = _request(
                     port,
                     "GET",
                     "/health",
                     headers={"Authorization": f"Bearer {TEST_TOKEN}"},
-                    timeout=0.25,
+                    timeout=min(1.0, remaining),
                 )
                 last_observation = f"status={status} payload={payload!r}"
+                if probes == 1:
+                    first_observation = last_observation
                 if (
                     process.poll() is None
                     and status == 200
                     and payload == {"ok": True, "agent": TEST_AGENT}
                 ):
+                    elapsed = time.monotonic() - started_at
+                    if elapsed > READINESS_WARN_SECONDS:
+                        warnings.warn(
+                            f"gateway readiness took {elapsed:.2f}s on {sys.platform} "
+                            f"(budget {START_TIMEOUT_SECONDS:.0f}s, {probes} probes)",
+                            RuntimeWarning,
+                            stacklevel=2,
+                        )
                     ready = True
                     return process
             except (OSError, http.client.HTTPException, ValueError) as error:
                 last_observation = repr(error)
+                if probes == 1:
+                    first_observation = last_observation
             time.sleep(0.05)
 
+        elapsed = time.monotonic() - started_at
         stdout, stderr = _terminate_and_capture(process)
         raise GatewayStartError(
-            "timed out waiting for gateway readiness: "
+            "timed out waiting for gateway readiness after "
+            f"{elapsed:.2f}s (budget {START_TIMEOUT_SECONDS:.0f}s, {probes} probes, "
+            f"platform {sys.platform}): first={first_observation}; "
             f"last={last_observation}; stdout={stdout!r}; stderr={stderr!r}",
             stderr,
         )
