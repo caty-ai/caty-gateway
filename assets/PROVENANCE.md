@@ -1,6 +1,12 @@
 # Asset provenance
 
-All assets are distributed under MIT. Ownership attestation is pending the owner's signature.
+All assets are distributed under MIT.
+
+Ownership attestation (given by the repository owner on 2026-09-05, recorded in this repository's Issue #4):
+
+> I, the repository owner, attest that the seven expression PNGs (idle, blink, listen, talk1, talk2, talk3, talk_blink) under `src/caty_gateway/assets/` are my own work or work I hold the rights to, and I release them under the MIT License of this repository. — 2026-09-05
+
+The attestation covers the seven expression PNGs only; `icon.png` (a crop of `idle.png`, see the table) is not part of it.
 
 | Asset | Source path in source repository | Source SHA-256 | Transform | Output SHA-256 |
 | --- | --- | --- | --- | --- |

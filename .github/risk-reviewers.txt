@@ -1,0 +1,4 @@
+# .github/risk-reviewers.txt — who may apply `risk-reviewed` (one GitHub login per line).
+# Read from the base branch by the Risk Review Gate; PR-side edits do not count.
+# Not a secret: committed so that changes show up in a PR.
+shojikumaru

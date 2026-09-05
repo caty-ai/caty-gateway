@@ -1,0 +1,43 @@
+# Thin caller for the org-wide external-input watchdog (caty-ai/.github#61).
+# Same shape as the 13 sibling repos (family-os copy is the reference).
+#
+# SECURITY: pull_request_target runs with secrets — never add checkout here.
+# discussion/discussion_comment are no-ops on repos without Discussions.
+# @main pin is a conscious trade (one fix reaches every repo); precondition:
+# caty-ai/.github main is merge-only via PR (see #61 for the record).
+#
+# Prerequisites in this repository (owner-only):
+#   gh secret set TELEGRAM_BOT_TOKEN --repo caty-ai/caty-gateway
+#   gh secret set TELEGRAM_CHAT_ID   --repo caty-ai/caty-gateway
+#   label `external-input` (created 2026-09-05)
+name: external-input-caller
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened, reopened]
+  pull_request_target:
+    types: [opened, reopened]
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+  discussion:
+    types: [created]
+  discussion_comment:
+    types: [created]
+
+# Load-bearing: pull_request_target defaults to a WRITE token — this map
+# denies contents and caps the callee. Do not delete it.
+permissions:
+  contents: none
+  issues: write
+  pull-requests: write
+
+jobs:
+  watch:
+    uses: caty-ai/.github/.github/workflows/external-input-watch.yml@main
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

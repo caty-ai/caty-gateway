@@ -1,0 +1,8 @@
+# .github/release-sync-ignore — T-5 release fulfilment scope for this repository.
+#
+# Read by release-sync and by check-release-drift.sh, always from the DEFAULT BRANCH.
+# Exact tag names, one per line; no globs; `#` lines are comments.
+#
+# This repository starts its public history at v0.1.0 (fresh history, one initial import).
+# Nothing is exempt. Do not add tags here to skip a Release — the way to ship without a
+# Release is to not push a v* tag.
