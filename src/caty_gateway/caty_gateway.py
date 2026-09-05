@@ -2619,6 +2619,9 @@ def _qr_delivery_mode(cli_value=None, stdout=None):
 
 
 def _qr_cli_args(argv):
+    if any(arg == "--member" or arg.startswith("--member=") for arg in argv):
+        print("ERROR: --member requires the public CLI: caty-gateway qr --member ID", file=sys.stderr)
+        raise SystemExit(2)
     parser = argparse.ArgumentParser(prog="caty_gateway.py qr")
     parser.add_argument("--qr-delivery", choices=QR_DELIVERY_MODES)
     parser.add_argument("--wait-visible-seconds", type=int)

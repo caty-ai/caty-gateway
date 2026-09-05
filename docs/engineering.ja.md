@@ -28,7 +28,7 @@ caty-gateway setup --member me --backend claude               # サービス設�
 | `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--no-history] [--reset]` | preflight から QR 表示までの一括セットアップ。`--plan-only` は計画表示のみ |
 | `status --member <id> [--wait]` | セットアップ／supervisor の進行状態 |
 | `serve` | フォアグラウンド起動。サービスから呼ばれる実体。非 loopback bind で `CATY_TOKEN` が空なら起動を拒否（fail-closed） |
-| `qr [--qr-delivery auto\|tty\|url]` | ペアリング QR の再発行 |
+| `qr [--member <id>] [--qr-delivery auto\|tty\|url]` | ペアリング QR の再発行 |
 | `push open-url\|media …` | 接続中のクライアントに URL や画像を開かせる。詳細は [push.md](push.md) |
 | `doctor --backend <b>` | backend 別 preflight を単独実行。受動チェックのみで AI にプロンプトは送らない |
 
@@ -125,24 +125,17 @@ Issue ラベルの `component:*` は、この表の行と 1 対 1 です。
 
 ### QR の再発行
 
-`caty-gateway qr` は、サービスと同じ環境変数（少なくとも `CATY_ID` `CATY_GATEWAY_PORT` `CATY_TOKEN` `CATY_PUBLIC_URL`）を必要とします。新しいターミナルにはそれが無いので、先に読み込みます。
-
-Linux（環境ファイルを読み込む）:
+インストール済みメンバーの環境変数（トークン、ポート、公開 URL など）を読み込んで再発行します。
 
 ```sh
-set -a; . ~/.config/caty-gateway/<id>.env; set +a
-caty-gateway qr
+caty-gateway qr --member <id>
+# ブラウザで表示する場合:
+caty-gateway qr --member <id> --qr-delivery url
 ```
 
-macOS（環境変数は plist の中にあるので取り出す。**このリリースでは通しの実測なし**。`plutil -extract` 自体はテンプレートで確認済み）:
+Linux では `~/.config/caty-gateway/<id>.env`、macOS では `~/Library/LaunchAgents/ai.caty.gateway.<id>.plist` の `EnvironmentVariables` を読み込みます。`PATH` を除き、インストール済みの値がシェルの環境変数を上書きします。設定ファイルの欠落・不正や `CATY_TOKEN` の欠落時は、ゲートウェイ本体を読み込む前にエラー終了します。
 
-```sh
-P=~/Library/LaunchAgents/ai.caty.gateway.<id>.plist
-for k in CATY_ID CATY_GATEWAY_PORT CATY_TOKEN CATY_PUBLIC_URL; do export $k="$(plutil -extract EnvironmentVariables.$k raw "$P")"; done
-caty-gateway qr
-```
-
-`qr --member <id>` で環境を自動で読む改善は別 Issue で扱います。
+手動での読み込みも引き続き利用できます。サービスの環境変数を export したうえで、`--member` なしの `caty-gateway qr` を実行してください。
 
 <a id="uninstall"></a>
 

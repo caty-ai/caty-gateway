@@ -198,12 +198,12 @@ class SetupOrchestrator:
     def _platform_paths(self) -> Tuple[pathlib.Path, str]:
         if self.system == "Linux":
             return (
-                self.home / ".config" / "caty-gateway" / (self.member + ".env"),
+                member_artifact_path(self.member, self.home, self.system),
                 "caty-gateway-" + self.member + ".service",
             )
         if self.system == "Darwin":
             label = "ai.caty.gateway." + self.member
-            return self.home / "Library" / "LaunchAgents" / (label + ".plist"), label
+            return member_artifact_path(self.member, self.home, self.system), label
         return pathlib.Path("/__unsupported__"), ""
 
     def _run(
@@ -459,7 +459,8 @@ class SetupOrchestrator:
         self._write_state()
         return True
 
-    def _read_env_file(self, path: pathlib.Path) -> Dict[str, str]:
+    @staticmethod
+    def _read_env_file(path: pathlib.Path, *, strict: bool = False) -> Dict[str, str]:
         values: Dict[str, str] = {}
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
@@ -467,10 +468,25 @@ class SetupOrchestrator:
             return values
         for line in lines:
             stripped = line.strip()
-            if not stripped or stripped.startswith("#") or "=" not in stripped:
+            if not stripped or stripped.startswith("#"):
+                continue
+            if "=" not in stripped:
+                if strict:
+                    raise ValueError("invalid environment assignment")
                 continue
             key, value = stripped.split("=", 1)
             value = value.strip()
+            quoted = value[:1] in ("'", '"')
+            closing_quote_escaped = (
+                value.startswith('"')
+                and len(value) >= 2
+                and (len(value[:-1]) - len(value[:-1].rstrip("\\"))) % 2 == 1
+            )
+            if strict and (
+                not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key.strip())
+                or (quoted and (len(value) < 2 or value[-1] != value[0] or closing_quote_escaped))
+            ):
+                raise ValueError("invalid environment assignment")
             if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
                 quote = value[0]
                 value = value[1:-1]
@@ -480,10 +496,14 @@ class SetupOrchestrator:
         return values
 
     @staticmethod
-    def _plist_env(path: pathlib.Path) -> Dict[str, str]:
+    def _plist_env(path: pathlib.Path, *, strict: bool = False) -> Dict[str, str]:
         try:
             payload = plistlib.loads(path.read_bytes())
             raw = payload.get("EnvironmentVariables", {})
+            if strict and isinstance(raw, dict) and any(
+                not isinstance(key, str) or not isinstance(value, str) for key, value in raw.items()
+            ):
+                raise ValueError("invalid plist environment value")
             return {str(key): str(value) for key, value in raw.items()} if isinstance(raw, dict) else {}
         except (OSError, plistlib.InvalidFileException, AttributeError):
             return {}
@@ -2087,6 +2107,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 pass
         if sigterm_handler is not None and signal.getsignal(signal.SIGTERM) is sigterm_handler:
             signal.signal(signal.SIGTERM, previous_sigterm)
+
+
+def member_artifact_path(member: str, home: pathlib.Path, system: str) -> pathlib.Path:
+    """Locate an installed member without constructing a setup orchestrator."""
+    if system == "Linux":
+        return home / ".config" / "caty-gateway" / (member + ".env")
+    if system == "Darwin":
+        return home / "Library" / "LaunchAgents" / ("ai.caty.gateway." + member + ".plist")
+    raise ValueError("unsupported platform")
+
+
+def read_member_env(path: pathlib.Path, system: str) -> Dict[str, str]:
+    """Read service values using the installer parsers, without running setup."""
+    if system == "Linux":
+        values = SetupOrchestrator._read_env_file(path, strict=True)
+    elif system == "Darwin":
+        values = SetupOrchestrator._plist_env(path, strict=True)
+    else:
+        raise ValueError("unsupported platform")
+    if any(not key or "=" in key or "\x00" in key or "\x00" in value for key, value in values.items()):
+        raise ValueError("invalid environment value")
+    return values
 
 
 if __name__ == "__main__":
