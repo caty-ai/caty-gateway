@@ -38,5 +38,7 @@ caty-gateway = "caty_gateway.cli:main"
 packages = ["src/caty_gateway"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/caty_gateway", "tests", "README.md", "LICENSE", "CONTRIBUTING.md", "docs", "assets", "tools", ".gitignore", ".gitleaks.toml", ".scrub-allow", "pyproject.toml", "Makefile"]
-exclude = ["/.venv*", "/.omx", "/dist", "**/__pycache__", "**/*.pyc"]
+# Public sdist = package payload only. Audit tooling, allowlists, docs and assets stay in the repository
+# (review seats 2026-09-06: shipping tools/ and .scrub-allow in a public archive re-publishes scrub policy).
+include = ["src/caty_gateway", "/README.md", "/LICENSE", "/CONTRIBUTING.md", "/pyproject.toml"]
+exclude = ["/.venv*", "/.omx", "/dist", "/.gitignore", "**/__pycache__", "**/*.pyc"]
