@@ -108,7 +108,7 @@ caty-gateway setup --member MEMBER [--backend BACKEND] [--port PORT] [--name NAM
 | 再開メタデータ・状態 | `~/.local/state/caty-gateway/setup/<id>.json`（成功時に削除）・`<id>.status.json` | 0600 |
 | 履歴 | `~/.local/state/caty-gateway/history/<id>/`（`XDG_STATE_HOME` があればその配下） | ユーザー |
 | 同梱資産のコピー・つなぎ音声 | `~/.local/share/caty-gateway/<id>/assets` `…/fillers` | ユーザー |
-| ペアリングストア | `~/.local/state/caty-gateway/pairing/`（`CATY_PAIRING_DIR` で変更可） | 0700 / 0600 |
+| ペアリングストア | `~/.local/state/caty-gateway/pairing/<member>/`（`CATY_PAIRING_DIR` で変更可） | 0700 / 0600 |
 | launchd | `~/Library/LaunchAgents/ai.caty.gateway.<id>.plist`・ログ `~/Library/Logs/caty-gateway-<id>.log` | ユーザー |
 
 ---

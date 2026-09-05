@@ -119,7 +119,7 @@ Issue ラベルの `component:*` は、この表の行と 1 対 1 です。
 | セットアップ進行状態 | `~/.local/state/caty-gateway/setup/<id>.*` |
 | 会話履歴 | `~/.local/state/caty-gateway/history/<id>/`（`CATY_HISTORY_DIR`・`--no-history` で無効） |
 | 同梱資産のコピー・つなぎ音声 | `~/.local/share/caty-gateway/<id>/{assets,fillers}` |
-| ペアリングストア | `~/.local/state/caty-gateway/pairing/`（0700・`CATY_PAIRING_DIR` で変更可） |
+| ペアリングストア | `~/.local/state/caty-gateway/pairing/<member>/`（0700・`CATY_PAIRING_DIR` で変更可） |
 
 <a id="reissue-qr"></a>
 

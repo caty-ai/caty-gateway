@@ -119,7 +119,7 @@ The service uses `KeepAlive` / `Restart=always` and restarts within 5 seconds if
 | Setup progress state | `~/.local/state/caty-gateway/setup/<id>.*` |
 | Conversation history | `~/.local/state/caty-gateway/history/<id>/` (`CATY_HISTORY_DIR`; disabled with `--no-history`) |
 | Copies of bundled assets, filler audio | `~/.local/share/caty-gateway/<id>/{assets,fillers}` |
-| Pairing store | `~/.local/state/caty-gateway/pairing/` (0700; override with `CATY_PAIRING_DIR`) |
+| Pairing store | `~/.local/state/caty-gateway/pairing/<member>/` (0700; override with `CATY_PAIRING_DIR`) |
 
 <a id="reissue-qr"></a>
 

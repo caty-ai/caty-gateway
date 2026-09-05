@@ -300,7 +300,7 @@ You can find the full picture of how it works and how to configure it in the doc
 
 ## Learn more
 
-Documentation is split by what you're looking for. The Japanese versions are linked at the top of each page.
+Documentation is split by what you're looking for. The engineering guide and the reference have Japanese versions, linked at the top of those two pages.
 
 | What you want to know | Page |
 |---|---|

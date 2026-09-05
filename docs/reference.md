@@ -108,7 +108,7 @@ The source of truth is [contracts/pairing-v1.md](contracts/pairing-v1.md). Only 
 | Resume metadata / state | `~/.local/state/caty-gateway/setup/<id>.json` (deleted on success), `<id>.status.json` | 0600 |
 | History | `~/.local/state/caty-gateway/history/<id>/` (under `XDG_STATE_HOME` if set) | user |
 | Copies of bundled assets, filler audio | `~/.local/share/caty-gateway/<id>/assets` `…/fillers` | user |
-| Pairing store | `~/.local/state/caty-gateway/pairing/` (override with `CATY_PAIRING_DIR`) | 0700 / 0600 |
+| Pairing store | `~/.local/state/caty-gateway/pairing/<member>/` (override with `CATY_PAIRING_DIR`) | 0700 / 0600 |
 | launchd | `~/Library/LaunchAgents/ai.caty.gateway.<id>.plist`, log `~/Library/Logs/caty-gateway-<id>.log` | user |
 
 ---
