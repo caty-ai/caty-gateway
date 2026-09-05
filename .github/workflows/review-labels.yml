@@ -24,6 +24,7 @@ jobs:
         src/caty_gateway/tts_fish.py
         src/caty_gateway/vision_describer.py
         src/caty_gateway/avatar_engine.py
+        src/caty_gateway/caty_config.py
         src/caty_gateway/voice_preview.py
         src/caty_gateway/voice_catalog.py
         src/caty_gateway/setup_supervisor.py
