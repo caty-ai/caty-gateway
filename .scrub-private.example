@@ -1,0 +1,11 @@
+[names]
+example-name
+
+[literals]
+/home/example
+
+[stems]
+examples/
+
+[repos]
+example-org/example-repo

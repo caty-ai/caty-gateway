@@ -203,6 +203,15 @@ make gate        # publication gate alone (personal URLs, denylist, selftest)
 
 The procedure for adding a backend is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+### Private scrub list
+
+Keep local detectors in the git-ignored `<root>/.scrub-private`, or set
+`SCRUB_PRIVATE_FILE` to another file. Copy `.scrub-private.example` as a starting
+point: UTF-8, `[names]`, `[literals]`, `[stems]`, `[repos]`, one verbatim entry per
+line; blank lines and `#` comment lines are ignored. CI has no private list and
+runs public rules only. The release checklist requires running
+`bash tools/scrub-audit.sh .` locally with the private list loaded before tagging.
+
 ---
 
 ## Documentation index

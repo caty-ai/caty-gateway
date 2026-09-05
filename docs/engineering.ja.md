@@ -203,6 +203,16 @@ make gate        # 公開ゲート単体（個人 URL・denylist・selftest）
 
 backend の追加手順は [CONTRIBUTING.md](../CONTRIBUTING.md) にあります。
 
+### Private scrub list
+
+個人名や内部パスの検査リストは、Git 管理外の `<root>/.scrub-private` に置きます。
+別の場所に置く場合は `SCRUB_PRIVATE_FILE` で指定してください。
+`.scrub-private.example` をひな形に、UTF-8 で `[names]`・`[literals]`・`[stems]`・
+`[repos]` の各節へ1行1件、そのままの文字列を書きます。空行と `#` のコメント行は無視します。
+CI にはこのファイルを置かず、公開ルールだけで検査します。リリースチェックリストでは、
+タグを打つ前に手元でリストを読み込ませて `bash tools/scrub-audit.sh .` を実行し、
+指摘がないことを確認します。
+
 ---
 
 ## ドキュメント索引

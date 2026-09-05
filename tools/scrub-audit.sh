@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root="${1:-.}"
-python3 - "$root" <<'PY'
+python3 -B - "$root" <<'PY'
 from __future__ import annotations
 import ast
 import os
@@ -16,9 +16,6 @@ root = Path(sys.argv[1]).resolve()
 findings = []
 binary_suffixes = {".png", ".jpg", ".jpeg", ".gif", ".pdf", ".whl", ".gz"}
 skip_parts = {".git", ".venv", ".venv-check", ".pytest_cache", "__pycache__", "dist", "build-check"}
-
-def split(*parts):
-    return "".join(parts)
 
 def logical_rel(rel):
     parts = Path(rel).parts
@@ -39,7 +36,7 @@ for number, entry in enumerate(allowlist_lines, 1):
     if not entry or entry.startswith("#"):
         continue
     if "\t" in entry:
-        rel, substring = entry.split("\t", 1)
+        rel, _, substring = entry.partition("\t")
         if not rel or not substring:
             print(
                 f"scrub-audit: invalid scoped allowlist entry at {allowlist_path}:{number}",
@@ -64,47 +61,70 @@ def allowed(rel, line):
         for allowed_rel, substring in scoped_allow_substrings
     )
 
-name_parts = [
-    split("sho", "jikumaru"), split("sho", "ji"), split("ku", "maru"),
-    "翔", "アルファ", "セバス", split("se", "bas"), "クレア",
-    split("cl", "aire"), "セロ", split("ce", "ro"), "マイン",
-    split("mi", "ne"), split("so", "ra"), split("lu", "ca"), "ルカ",
-    split("al", "pha"),
-]
-name_re = re.compile("|".join(
-    (r"\\b" + re.escape(value) + r"\\b") if value.isascii() else re.escape(value)
-    for value in name_parts
-), re.I)
-forbidden_literals = [
-    split("100.98.", "83.100"), split("/home/", "admin"), split("/home/", "cero"),
-    split("/Users/", "shoji", "kumaru"), split("jiku", "maru-sho"),
-    split("claude", "-workspace"), split("wip-caty", "-watch"),
-    split("Hetz", "ner"), split("5161d41404314212", "af1254556477c17d"),
-    split("~/", ".open", "claw/env"), split("ai.open", "claw.caty-"), split("caty", "ptt-"),
-    split("Mac ", "mini"),
-]
-private_stems = [
-    split("firmware", "-assets"), split("tools/make-face", "-frames"),
-    split("members/", "mine.json"), split("members/", "cero.json"),
-    split("ESP", "32/"), split("caty", "-talk/"),
-]
-private_repos = [
-    split("shoji", "kumaru/", "wip-caty", "-talk"), split("wip-caty", "-talk"),
-    split("caty-talk", "-LP"), split("family", "-vault"),
-    split("alpha", "-wiki"), split("Shared", "Hub"),
-]
+private_path = Path(os.environ.get("SCRUB_PRIVATE_FILE", root / ".scrub-private")).resolve()
+private_sections = {key: [] for key in ("names", "literals", "stems", "repos")}
+try:
+    private_lines = private_path.read_text(encoding="utf-8").splitlines()
+except FileNotFoundError:
+    print("scrub-audit: private list not loaded (0 entries) — public rules only")
+except (OSError, UnicodeError):
+    print("scrub-audit: cannot read private list", file=sys.stderr)
+    raise SystemExit(2)
+else:
+    section = None
+    for number, entry in enumerate(private_lines, 1):
+        if not entry.strip() or entry.lstrip().startswith("#"):
+            continue
+        if entry in {f"[{key}]" for key in private_sections}:
+            section = entry[1:-1]
+        elif section is None or (entry.startswith("[") and entry.endswith("]")):
+            print(f"scrub-audit: invalid private list at line {number}", file=sys.stderr)
+            raise SystemExit(2)
+        else:
+            private_sections[section].append(entry)
+    print(f"scrub-audit: private list loaded ({sum(map(len, private_sections.values()))} entries)")
+
+name_patterns = [re.compile(
+    (r"\b" + re.escape(value) + r"\b") if value.isascii() else re.escape(value), re.I,
+) for value in private_sections["names"]]
+private_substrings = [value.lower() for key in ("literals", "stems", "repos")
+                      for value in private_sections[key]]
+
+def private_spans(line):
+    spans = [match.span() for pattern in name_patterns for match in pattern.finditer(line)]
+    if private_substrings:
+        lowered = line.lower()
+        # Map offsets back to the original, including Unicode lowercase expansion.
+        offsets = [i for i, char in enumerate(line) for _ in char.lower()]
+        for value in private_substrings:
+            start = lowered.find(value)
+            while start != -1:
+                spans.append((offsets[start], offsets[start + len(value) - 1] + 1))
+                start = lowered.find(value, start + 1)
+    return sorted(spans)
+
+def redact_private(line):
+    result, end = [], 0
+    for start, stop in private_spans(line):
+        if stop <= end:
+            continue
+        if start >= end:
+            result.extend((line[end:start], "[redacted]"))
+        end = stop
+    return "".join(result) + line[end:]
+
 secret_re = re.compile(
-    split(r"\\b", "sk", r"-[A-Za-z0-9]{8,}") + "|" +
-    split("gh", r"p_[A-Za-z0-9]{10,}") + "|" +
-    split("github", "_pat_") + "|" + split("xox", r"[bap]-") + "|" +
-    split("AK", r"IA[0-9A-Z]{12,}") + "|" +
-    split("-----BEGIN ", r"[A-Z ]*PRIVATE KEY")
+    "".join((r"\\b", "sk", r"-[A-Za-z0-9]{8,}")) + "|" +
+    "".join(("gh", r"p_[A-Za-z0-9]{10,}")) + "|" +
+    "".join(("github", "_pat_")) + "|" + "".join(("xox", r"[bap]-")) + "|" +
+    "".join(("AK", r"IA[0-9A-Z]{12,}")) + "|" +
+    "".join(("-----BEGIN ", r"[A-Z ]*PRIVATE KEY"))
 )
 bearer_re = re.compile(r"Bearer [A-Za-z0-9._-]{16,}")
 hex_re = re.compile(r"(?i)(?<![0-9a-f])[0-9a-f]{32,}(?![0-9a-f])")
 email_re = re.compile(r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b")
 issue_re = re.compile(r"#[0-9]{2,4}\\b")
-device_re = re.compile(split("xiao", "zhi") + "|" + split("X", "Z_") + "|" + split("ESP", "32"), re.I)
+device_re = re.compile("".join(("xiao", "zhi")) + "|" + "".join(("X", "Z_")) + "|" + "".join(("ESP", "32")), re.I)
 
 def scan_line(rel, number, line, *, from_binary=False):
     scope_rel = logical_rel(rel)
@@ -115,12 +135,11 @@ def scan_line(rel, number, line, *, from_binary=False):
     if bearer_re.search(line): labels.append("bearer")
     if not from_binary and hex_re.search(line): labels.append("hex32")
     if email_re.search(line): labels.append("email")
-    if name_re.search(line): labels.append("personal-name")
-    if any(value.lower() in line.lower() for value in forbidden_literals): labels.append("forbidden-literal")
-    if any(value.lower() in line.lower() for value in private_stems): labels.append("private-path")
-    if any(value.lower() in line.lower() for value in private_repos): labels.append("private-repo")
     if device_re.search(line): labels.append("excluded-device")
     if (scope_rel == "README.md" or scope_rel.startswith("docs/")) and issue_re.search(line): labels.append("issue-reference")
+    if private_spans(line): labels.append("private-literal")
+    line = redact_private(line)
+    rel = redact_private(rel)
     for label in labels:
         findings.append(f"{label}: {rel}:{number}: {line[:240]}")
 
@@ -129,7 +148,7 @@ for path in sorted(root.rglob("*")):
     if not path.is_file() or any(part in skip_parts for part in path.relative_to(root).parts):
         continue
     # The allowlist authority was parsed and validated above; do not scan it against itself.
-    if path == allowlist_path:
+    if path == allowlist_path or path.resolve() == private_path:
         continue
     files.append(path)
 
@@ -174,16 +193,16 @@ for path in files:
         except SyntaxError as error:
             findings.append(f"python-syntax: {rel}:{error.lineno}: {error.msg}")
         else:
-            chat_names = [split("Sl", "ack"), split("Dis", "cord"), split("Tele", "gram")]
+            chat_names = ["".join(("Sl", "ack")), "".join(("Dis", "cord")), "".join(("Tele", "gram"))]
             for node in ast.walk(tree):
                 if isinstance(node, ast.Constant) and isinstance(node.value, str):
                     if any(name.lower() in node.value.lower() for name in chat_names):
                         findings.append(f"prompt-tool: {rel}:{getattr(node, 'lineno', 0)}")
 
-print(f"scrub-audit: root={root}")
+print(f"scrub-audit: root={redact_private(str(root))}")
 if findings:
     for finding in findings:
-        print(finding)
+        print(redact_private(finding))
     print(f"scrub-audit: {len(findings)} findings")
     raise SystemExit(1)
 print("scrub-audit: 0 findings")
