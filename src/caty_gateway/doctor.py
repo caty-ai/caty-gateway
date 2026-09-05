@@ -39,7 +39,7 @@ class Check:
     hint: str
 
     def __str__(self) -> str:
-        return "%s %s: %s" % (self.status, self.name, self.hint)
+        return "PASS %s" % self.name if self.status == "PASS" else "%s %s: %s" % (self.status, self.name, self.hint)
 
 
 def _runner(command, *, env, timeout):

@@ -524,7 +524,7 @@ class SetupOrchestrator:
         rendered = rendered.replace("__PYTHON__", quoted(self.service_python))
         rendered = rendered.replace("Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin",
                                     "Environment=" + quoted("PATH=" + str(self.home) + "/.local/bin:/usr/local/bin:/usr/bin:/bin"))
-        rendered = rendered.replace("EnvironmentFile=%h/.config/caty-gateway/%i.env", "EnvironmentFile=" + quoted(self.artifact_path))
+        rendered = rendered.replace("EnvironmentFile=%h/.config/caty-gateway/" + self.member + ".env", "EnvironmentFile=" + quoted(self.artifact_path))
         return (rendered.rstrip("\n") + "\n").encode("utf-8")
 
     def _systemd_unit_matches_expected(self, unit: pathlib.Path) -> bool:

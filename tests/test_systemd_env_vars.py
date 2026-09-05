@@ -24,6 +24,16 @@ import pytest
 from caty_gateway.setup_orchestrator import SetupOrchestrator
 
 
+def test_systemd_environment_file_is_absolute(tmp_path, monkeypatch):
+    monkeypatch.setattr("caty_gateway.setup_orchestrator.platform.system", lambda: "Linux")
+    orch = SetupOrchestrator(["--member", "fake-member"], env={"HOME": str(tmp_path)})
+    unit = orch._expected_systemd_unit().decode("utf-8")
+    line = next(line for line in unit.splitlines() if line.startswith("EnvironmentFile="))
+    assert line == 'EnvironmentFile="' + str(tmp_path / ".config/caty-gateway/fake-member.env") + '"'
+    assert "%h" not in line and "%i" not in line
+    assert orch.service_name == "caty-gateway-fake-member.service"
+
+
 @pytest.mark.parametrize("system", ["Linux", "Darwin"])
 @pytest.mark.parametrize("backend", ["claude", "codex", "openclaw", "hermes", "openai-compat", "openai_compat"])
 def test_renderer_persists_runtime_env_auth_history_and_module(tmp_path, monkeypatch, system, backend):
@@ -62,6 +72,9 @@ def test_renderer_persists_runtime_env_auth_history_and_module(tmp_path, monkeyp
         assert ' -m caty_gateway.caty_gateway' in unit.read_text()
         assert "__" not in unit.read_text()
         assert "%%i" in unit.read_text()
+        env_line = next(line for line in unit.read_text().splitlines() if line.startswith("EnvironmentFile="))
+        escaped_path = str(orch.artifact_path).replace("%", "%%").replace("\\", "\\\\").replace('"', '\\"')
+        assert env_line == 'EnvironmentFile="' + escaped_path + '"'
     else:
         payload = plistlib.loads(orch.artifact_path.read_bytes())
         assert payload["ProgramArguments"] == [sys.executable, "-m", "caty_gateway.caty_gateway"]

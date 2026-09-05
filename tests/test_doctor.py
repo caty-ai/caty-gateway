@@ -33,6 +33,7 @@ def harness(tmp_path):
         return subprocess.CompletedProcess(command, 0, output, "")
 
     def get_json(url, headers, timeout):
+        assert timeout == doctor.TIMEOUT
         requests.append((url, headers, timeout))
         return 200, {"data": [{"id": "fake-model"}]}
 
@@ -52,10 +53,20 @@ def test_every_backend_passes_without_prompts(harness, backend):
     assert instance.public_url == "http://100.64.0.1:8788"
     assert all(check.status in {"PASS", "WARN"} and check.hint for check in instance.checks)
     assert all(line.startswith(("PASS ", "WARN ")) for line in lines)
+    assert lines == ["PASS " + check.name if check.status == "PASS"
+                     else "WARN " + check.name + ": " + check.hint
+                     for check in instance.checks]
     allowed = [["status"], ["ip", "-4"], ["--version"], ["login", "status"], ["agents", "list"]]
     assert all(command[1:] in allowed or command[1] == "-c" for command in commands)
     assert all(url.endswith(("/models", ":18789")) for url, _, _ in requests)
     assert not any("prompt" in command or "exec" in command for command in commands)
+
+
+@pytest.mark.parametrize("status", ["PASS", "FAIL", "WARN"])
+def test_repair_hint_is_printed_only_for_failures_and_warnings(status):
+    check = doctor.Check(status, "Python", "install Python 3.10+")
+    expected = "PASS Python" if status == "PASS" else status + " Python: install Python 3.10+"
+    assert str(check) == expected
 
 
 def test_normalization_and_exact_rejection():
