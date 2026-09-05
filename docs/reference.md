@@ -44,7 +44,7 @@ The generated `CATY_TOKEN` is only generated during install, and shows as `[REDA
 |---|---|
 | `status --member MEMBER [--wait]` | State of setup / supervisor |
 | `serve` | Foreground start. Exits before starting if `CATY_GATEWAY_BIND` is not loopback and `CATY_TOKEN` is empty |
-| `qr [--qr-delivery {auto,tty,url}] [--wait-visible-seconds N]` | Reissue the pairing QR |
+| `qr [--member MEMBER] [--qr-delivery {auto,tty,url}] [--wait-visible-seconds N]` | Reissue the pairing QR; `--member` loads the installed Linux env file or macOS plist environment (except `PATH`), overriding shell values |
 | `push open-url URL --title T [--audience A] [--session S] [--key K]` / `push media URL --title T …` | Send an event to connected clients. `--title` is required. `CATY_TOKEN` is passed via an environment variable |
 | `doctor --backend BACKEND [--member MEMBER] [--port PORT] [--public-url URL]` | Passive preflight. `--probe` is reserved (returns FAIL in this release) |
 

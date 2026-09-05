@@ -18,16 +18,16 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | ANTHROPIC_API_KEY | None (unset) | C | secret | member env (0600) | src/caty_gateway/vision_describer.py:46 |
 | CATY_ACCENT_COLOR | '#FF8FB1'; None (unset) | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:187; src/caty_gateway/setup_orchestrator.py:127 |
 | CATY_ADMIN_TOKEN | '' | A | secret | member env (0600) | src/caty_gateway/caty_gateway.py:184 |
-| CATY_AGENT | 'main' | B | public | member env (0600) | src/caty_gateway/caty_gateway.py:130; src/caty_gateway/doctor.py:227; src/caty_gateway/setup_orchestrator.py:1139 |
+| CATY_AGENT | 'main' | B | public | member env (0600) | src/caty_gateway/caty_gateway.py:130; src/caty_gateway/doctor.py:227; src/caty_gateway/setup_orchestrator.py:1159 |
 | CATY_ASSETS_VERSION | '1' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:188 |
 | CATY_ASSET_DIR | expression: str(resources.files('caty_gateway').joinpath('assets')) | A | local | member env (0600) | src/caty_gateway/caty_gateway.py:189 |
 | CATY_AVATAR_STYLE_REF | None (unset) | C | local | member env (0600) | src/caty_gateway/avatar_engine.py:525 |
 | CATY_AVATAR_VENDOR_HOST_ALLOWLIST | '' | C | public | member env (0600) | src/caty_gateway/caty_config.py:42 |
 | CATY_AVATAR_WORKDIR | None (unset) | C | local | member env (0600) | src/caty_gateway/avatar_engine.py:527 |
 | CATY_BACKEND | 'openclaw' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:131; src/caty_gateway/setup_orchestrator.py:122 |
-| CATY_BACKEND_CONFIG_PATHS | '' | D | local | process-only | src/caty_gateway/setup_orchestrator.py:702 |
-| CATY_BACKEND_ENABLE_CMD | '' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1061 |
-| CATY_CLAUDE_BIN | 'claude' | B | public | member env (0600) | src/caty_gateway/caty_gateway.py:168; src/caty_gateway/doctor.py:216; src/caty_gateway/setup_orchestrator.py:672 |
+| CATY_BACKEND_CONFIG_PATHS | '' | D | local | process-only | src/caty_gateway/setup_orchestrator.py:722 |
+| CATY_BACKEND_ENABLE_CMD | '' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1081 |
+| CATY_CLAUDE_BIN | 'claude' | B | public | member env (0600) | src/caty_gateway/caty_gateway.py:168; src/caty_gateway/doctor.py:216; src/caty_gateway/setup_orchestrator.py:692 |
 | CATY_CLAUDE_CWD | expression: os.path.expanduser('~'); expression: str(self.home) | B | local | member env (0600) | src/caty_gateway/caty_gateway.py:170; src/caty_gateway/doctor.py:217 |
 | CATY_CLAUDE_MODEL | '' | B | public | member env (0600) | src/caty_gateway/caty_gateway.py:169 |
 | CATY_CLAUDE_PROJECTS_DIR | None (unset) | B | local | member env (0600) | src/caty_gateway/backends/claude.py:118 |
@@ -36,7 +36,7 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | CATY_EXTERNAL_SEED_TURNS | '50' | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:1342 |
 | CATY_EXTERNAL_SESSIONS | False | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:1350 |
 | CATY_FILLER_DIR | None (unset) | A | local | member env (0600) | src/caty_gateway/caty_gateway.py:1863 |
-| CATY_GATEWAY_BIND | ''; '0.0.0.0' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:125; src/caty_gateway/cli.py:48 |
+| CATY_GATEWAY_BIND | ''; '0.0.0.0' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:125; src/caty_gateway/cli.py:94 |
 | CATY_GATEWAY_PORT | '8788' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:128; src/caty_gateway/doctor.py:289; src/caty_gateway/setup_orchestrator.py:174 |
 | CATY_GATEWAY_TOKEN | None (unset) | B | secret | member env (0600) | src/caty_gateway/backends/openclaw.py:138; src/caty_gateway/doctor.py:231 |
 | CATY_GATEWAY_URL | 'http://127.0.0.1:18789' | B | local | member env (0600) | src/caty_gateway/backends/openclaw.py:296; src/caty_gateway/doctor.py:241 |
@@ -48,16 +48,16 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | CATY_GCLI_PARSE_SPEC | None (unset) | B | public | member env (0600) | src/caty_gateway/backends/generic_cli.py:95 |
 | CATY_GCLI_RESUME_ARGS | None (unset) | B | public | member env (0600) | src/caty_gateway/backends/generic_cli.py:91 |
 | CATY_GCLI_SESSION_STORE | None (unset) | B | local | member env (0600) | src/caty_gateway/backends/generic_cli.py:99 |
-| CATY_HERMES_API_KEY | ''; None (unset) | B | secret | member env (0600) | src/caty_gateway/caty_gateway.py:172; src/caty_gateway/doctor.py:244; src/caty_gateway/setup_orchestrator.py:565; src/caty_gateway/setup_orchestrator.py:568; src/caty_gateway/setup_orchestrator.py:681 |
+| CATY_HERMES_API_KEY | ''; None (unset) | B | secret | member env (0600) | src/caty_gateway/caty_gateway.py:172; src/caty_gateway/doctor.py:244; src/caty_gateway/setup_orchestrator.py:585; src/caty_gateway/setup_orchestrator.py:588; src/caty_gateway/setup_orchestrator.py:701 |
 | CATY_HERMES_URL | 'http://127.0.0.1:8642' | B | local | member env (0600) | src/caty_gateway/caty_gateway.py:171; src/caty_gateway/doctor.py:246 |
 | CATY_HISTORY_DIR | '' | A | local | member env (0600) | src/caty_gateway/history_store.py:27; src/caty_gateway/history_store.py:31; src/caty_gateway/session_links.py:21 |
 | CATY_HISTORY_MAX_TURNS | '0' | C | public | member env (0600) | src/caty_gateway/history_store.py:114 |
 | CATY_HISTORY_MD | '1' | C | public | member env (0600) | src/caty_gateway/history_store.py:216 |
-| CATY_ID | ''; 'caty'; None (unset) | A | public | member env (0600) | src/caty_gateway/caty_config.py:114; src/caty_gateway/caty_gateway.py:1310; src/caty_gateway/caty_gateway.py:1366; src/caty_gateway/caty_gateway.py:185; src/caty_gateway/caty_gateway.py:1862; src/caty_gateway/caty_gateway.py:2036; src/caty_gateway/caty_gateway.py:4531; src/caty_gateway/pairing_store.py:144; src/caty_gateway/share_store.py:115 |
-| CATY_LANG | 'ja' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:165; src/caty_gateway/setup_orchestrator.py:1140 |
+| CATY_ID | ''; 'caty'; None (unset) | A | public | member env (0600) | src/caty_gateway/caty_config.py:114; src/caty_gateway/caty_gateway.py:1310; src/caty_gateway/caty_gateway.py:1366; src/caty_gateway/caty_gateway.py:185; src/caty_gateway/caty_gateway.py:1862; src/caty_gateway/caty_gateway.py:2036; src/caty_gateway/caty_gateway.py:4534; src/caty_gateway/pairing_store.py:144; src/caty_gateway/share_store.py:115 |
+| CATY_LANG | 'ja' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:165; src/caty_gateway/setup_orchestrator.py:1160 |
 | CATY_NAME | 'Caty'; None (unset) | A | public | member env (0600) | src/caty_gateway/avatar_engine.py:551; src/caty_gateway/caty_gateway.py:186; src/caty_gateway/history_store.py:202; src/caty_gateway/setup_orchestrator.py:126 |
 | CATY_OFFLINE | '' | C | public | member env (0600) | src/caty_gateway/voice_preview.py:51 |
-| CATY_OPENAI_API_KEY | '' | B | secret | member env (0600) | src/caty_gateway/caty_gateway.py:175; src/caty_gateway/doctor.py:251; src/caty_gateway/setup_orchestrator.py:681 |
+| CATY_OPENAI_API_KEY | '' | B | secret | member env (0600) | src/caty_gateway/caty_gateway.py:175; src/caty_gateway/doctor.py:251; src/caty_gateway/setup_orchestrator.py:701 |
 | CATY_OPENAI_BASE_URL | '' | B | local | member env (0600) | src/caty_gateway/caty_gateway.py:173; src/caty_gateway/doctor.py:249 |
 | CATY_OPENAI_CHAT_HEARTBEAT_SEC | '5' | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:215 |
 | CATY_OPENAI_CHAT_MAX_CONCURRENCY | '2' | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:214 |
@@ -76,20 +76,20 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | CATY_PRESENCE_MODE2 | '' | C | public | member env (0600) | src/caty_gateway/presence_state.py:8 |
 | CATY_PTT_BRAIN_TIMEOUT | '1800' | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:181 |
 | CATY_PTT_JOB_TTL | '2100' | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:182 |
-| CATY_PUBLIC_URL | '' | A | local | member env (0600) | src/caty_gateway/caty_gateway.py:2489; src/caty_gateway/caty_gateway.py:2681; src/caty_gateway/doctor.py:105; src/caty_gateway/setup_orchestrator.py:128 |
+| CATY_PUBLIC_URL | '' | A | local | member env (0600) | src/caty_gateway/caty_gateway.py:2489; src/caty_gateway/caty_gateway.py:2684; src/caty_gateway/doctor.py:105; src/caty_gateway/setup_orchestrator.py:128 |
 | CATY_QR_DELIVERY | 'auto' | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:2610; src/caty_gateway/setup_orchestrator.py:129 |
 | CATY_REQUIRE_AUTH | False | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:1354 |
 | CATY_SESSION_KEY_PREFIX | 'caty-' | B | public | member env (0600) | src/caty_gateway/caty_gateway.py:158 |
-| CATY_SETUP_BACKEND_RECOVERY_TIMEOUT_SECONDS | '120' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:925 |
-| CATY_SETUP_DEBUG | None (unset) | C | public | process-only | src/caty_gateway/setup_orchestrator.py:2074 |
-| CATY_SETUP_HANDOFF_GRACE_SECONDS | '5' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1629 |
-| CATY_SETUP_QR_TIMEOUT_SECONDS | '3700' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1396 |
+| CATY_SETUP_BACKEND_RECOVERY_TIMEOUT_SECONDS | '120' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:945 |
+| CATY_SETUP_DEBUG | None (unset) | C | public | process-only | src/caty_gateway/setup_orchestrator.py:2094 |
+| CATY_SETUP_HANDOFF_GRACE_SECONDS | '5' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1649 |
+| CATY_SETUP_QR_TIMEOUT_SECONDS | '3700' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1416 |
 | CATY_SETUP_RESUME_TTL_SECONDS | None (unset) | D | public | process-only | src/caty_gateway/setup_orchestrator.py:130 |
-| CATY_SETUP_STATUS_WAIT_SECONDS | '600' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1771 |
-| CATY_SETUP_SUPERVISED | None (unset) | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1059; src/caty_gateway/setup_orchestrator.py:1556; src/caty_gateway/setup_orchestrator.py:1660; src/caty_gateway/setup_orchestrator.py:1824; src/caty_gateway/setup_orchestrator.py:1876; src/caty_gateway/setup_orchestrator.py:2005 |
+| CATY_SETUP_STATUS_WAIT_SECONDS | '600' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1791 |
+| CATY_SETUP_SUPERVISED | None (unset) | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1079; src/caty_gateway/setup_orchestrator.py:1576; src/caty_gateway/setup_orchestrator.py:1680; src/caty_gateway/setup_orchestrator.py:1844; src/caty_gateway/setup_orchestrator.py:1896; src/caty_gateway/setup_orchestrator.py:2025 |
 | CATY_SHARE_DIR | '' | A | local | member env (0600) | src/caty_gateway/share_store.py:126 |
 | CATY_STREAM_TTS | ''; None (unset) | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:1384; src/caty_gateway/caty_gateway.py:162 |
-| CATY_TOKEN | '' | A | secret | member env (0600) | src/caty_gateway/caty_gateway.py:183; src/caty_gateway/caty_gateway.py:4932; src/caty_gateway/cli.py:49 |
+| CATY_TOKEN | '' | A | secret | member env (0600) | src/caty_gateway/caty_gateway.py:183; src/caty_gateway/caty_gateway.py:4935; src/caty_gateway/cli.py:95 |
 | CATY_TOMBSTONE_TTL_DAYS | '7' | C | public | member env (0600) | src/caty_gateway/history_store.py:139 |
 | CATY_TTS_ENGINE | '' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:1502 |
 | CATY_TTS_PROXY | 'http://localhost:5100/v1/audio/speech' | C | local | member env (0600) | src/caty_gateway/caty_gateway.py:179 |
@@ -123,17 +123,17 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | FISH_RETRY_BASE_S | 0.5 | C | public | member env (0600) | src/caty_gateway/tts_fish.py:147; src/caty_gateway/tts_fish.py:210 |
 | FISH_RETRY_CAP_S | 8.0 | C | public | member env (0600) | src/caty_gateway/tts_fish.py:148; src/caty_gateway/tts_fish.py:211 |
 | FISH_UNHEALTHY_COOLDOWN_S | 20.0 | C | public | member env (0600) | src/caty_gateway/tts_fish.py:62 |
-| HERMES_HOME | expression: str(self.home / '.hermes') | D | local | process-only | src/caty_gateway/setup_orchestrator.py:697 |
-| HOME | expression: str(Path.home()); expression: str(pathlib.Path.home()) | D | local | process-only | src/caty_gateway/doctor.py:102; src/caty_gateway/setup_orchestrator.py:118 |
+| HERMES_HOME | expression: str(self.home / '.hermes') | D | local | process-only | src/caty_gateway/setup_orchestrator.py:717 |
+| HOME | None (unset); expression: str(Path.home()); expression: str(pathlib.Path.home()) | D | local | process-only | src/caty_gateway/cli.py:60; src/caty_gateway/doctor.py:102; src/caty_gateway/setup_orchestrator.py:118 |
 | OPENCLAW_BIN | 'openclaw' | B | public | member env (0600) | src/caty_gateway/caty_gateway.py:166; src/caty_gateway/doctor.py:225 |
 | OPENCLAW_GATEWAY_TOKEN | None (unset) | B | secret | member env (0600) | src/caty_gateway/backends/openclaw.py:138; src/caty_gateway/doctor.py:231 |
-| OPENCLAW_HOME | expression: str(self.home / '.openclaw') | D | local | process-only | src/caty_gateway/setup_orchestrator.py:694 |
-| PATH | None (unset); expression: os.defpath | D | local | process-only | src/caty_gateway/doctor.py:122; src/caty_gateway/setup_orchestrator.py:1137; src/caty_gateway/setup_orchestrator.py:235 |
+| OPENCLAW_HOME | expression: str(self.home / '.openclaw') | D | local | process-only | src/caty_gateway/setup_orchestrator.py:714 |
+| PATH | None (unset); expression: os.defpath | D | local | process-only | src/caty_gateway/doctor.py:122; src/caty_gateway/setup_orchestrator.py:1157; src/caty_gateway/setup_orchestrator.py:235 |
 | POYO_API_KEY | None (unset) | C | secret | member env (0600) | src/caty_gateway/avatar_engine.py:141 |
 | POYO_BASE | None (unset) | C | public | member env (0600) | src/caty_gateway/avatar_engine.py:144 |
 | PYTHON | None (unset) | D | local | process-only | src/caty_gateway/doctor.py:106; src/caty_gateway/setup_orchestrator.py:137 |
 | RENOISE_API_KEY | None (unset) | C | secret | member env (0600) | src/caty_gateway/avatar_engine.py:339 |
 | RENOISE_AUTH_TOKEN | None (unset) | C | secret | member env (0600) | src/caty_gateway/avatar_engine.py:340 |
 | RENOISE_BASE_URL | None (unset) | C | public | member env (0600) | src/caty_gateway/avatar_engine.py:343 |
-| XDG_RUNTIME_DIR | None (unset) | D | local | process-only | src/caty_gateway/setup_orchestrator.py:586 |
-| XDG_STATE_HOME | ''; expression: str(self.home / '.local' / 'state') | D | local | process-only | src/caty_gateway/doctor.py:208; src/caty_gateway/pairing_store.py:162; src/caty_gateway/setup_orchestrator.py:1151; src/caty_gateway/setup_orchestrator.py:195; src/caty_gateway/share_store.py:129 |
+| XDG_RUNTIME_DIR | None (unset) | D | local | process-only | src/caty_gateway/setup_orchestrator.py:606 |
+| XDG_STATE_HOME | ''; expression: str(self.home / '.local' / 'state') | D | local | process-only | src/caty_gateway/doctor.py:208; src/caty_gateway/pairing_store.py:162; src/caty_gateway/setup_orchestrator.py:1171; src/caty_gateway/setup_orchestrator.py:195; src/caty_gateway/share_store.py:129 |

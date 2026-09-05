@@ -28,7 +28,7 @@ caty-gateway setup --member me --backend claude               # install service 
 | `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--no-history] [--reset]` | One-shot setup from preflight through showing the QR. `--plan-only` only displays the plan |
 | `status --member <id> [--wait]` | Progress of setup / supervisor |
 | `serve` | Foreground start. This is the actual process the service invokes. Refuses to start on a non-loopback bind if `CATY_TOKEN` is empty (fail-closed) |
-| `qr [--qr-delivery auto\|tty\|url]` | Reissue the pairing QR |
+| `qr [--member <id>] [--qr-delivery auto\|tty\|url]` | Reissue the pairing QR |
 | `push open-url\|media …` | Makes a connected client open a URL or image. See [push.md](push.md) for details |
 | `doctor --backend <b>` | Runs backend-specific preflight on its own. Passive checks only; never sends a prompt to the AI |
 
@@ -125,24 +125,17 @@ The service uses `KeepAlive` / `Restart=always` and restarts within 5 seconds if
 
 ### Reissuing the QR
 
-`caty-gateway qr` needs the same environment variables as the service (at least `CATY_ID`, `CATY_GATEWAY_PORT`, `CATY_TOKEN`, `CATY_PUBLIC_URL`). A fresh terminal does not have them, so load them first.
-
-Linux (source the environment file):
+Use the installed member's environment, including its token, port, and public URL:
 
 ```sh
-set -a; . ~/.config/caty-gateway/<id>.env; set +a
-caty-gateway qr
+caty-gateway qr --member <id>
+# For a browser-viewable QR:
+caty-gateway qr --member <id> --qr-delivery url
 ```
 
-macOS (the variables live inside the plist, so extract them; **not measured end-to-end in this release**, `plutil -extract` itself verified against the template):
+On Linux, this reads `~/.config/caty-gateway/<id>.env`; on macOS, it reads `EnvironmentVariables` from `~/Library/LaunchAgents/ai.caty.gateway.<id>.plist`. Installed values override the current shell environment except for `PATH`. Missing or invalid configuration, including a missing `CATY_TOKEN`, exits with an error before the gateway runtime loads.
 
-```sh
-P=~/Library/LaunchAgents/ai.caty.gateway.<id>.plist
-for k in CATY_ID CATY_GATEWAY_PORT CATY_TOKEN CATY_PUBLIC_URL; do export $k="$(plutil -extract EnvironmentVariables.$k raw "$P")"; done
-caty-gateway qr
-```
-
-A `qr --member <id>` option that loads the environment automatically is tracked in a separate issue.
+Manual sourcing still works: export the service environment and run `caty-gateway qr` without `--member`.
 
 <a id="uninstall"></a>
 
