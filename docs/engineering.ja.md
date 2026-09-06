@@ -32,7 +32,7 @@ CATY_QR_DELIVERY=tty caty-gateway setup --member <id> --backend <b> --yes
 
 | コマンド | 役割 |
 |---|---|
-| `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--yes] [--no-history] [--reset]` | preflight から QR 表示までの一括セットアップ。`--plan-only` は計画表示のみ。`--yes` は確認プロンプトなしで承認（非 TTY では必須） |
+| `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--yes] [--no-history] [--reset]` | preflight から QR 表示までの一括セットアップ。`--plan-only` は計画表示のみ。`--yes` は確認プロンプトなしで承認（stdin が端末でないときは必須） |
 | `status --member <id> [--wait]` | セットアップ／supervisor の進行状態 |
 | `serve` | フォアグラウンド起動。サービスから呼ばれる実体。非 loopback bind で `CATY_TOKEN` が空なら起動を拒否（fail-closed） |
 | `qr [--member <id>] [--qr-delivery auto\|tty\|url]` | ペアリング QR の再発行 |

@@ -32,7 +32,7 @@ CATY_QR_DELIVERY=tty caty-gateway setup --member <id> --backend <b> --yes
 
 | Command | Role |
 |---|---|
-| `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--yes] [--no-history] [--reset]` | One-shot setup from preflight through showing the QR. `--plan-only` only displays the plan; `--yes` accepts it without the prompt (required on a non-TTY) |
+| `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--yes] [--no-history] [--reset]` | One-shot setup from preflight through showing the QR. `--plan-only` only displays the plan; `--yes` accepts it without the prompt (required when stdin is not a terminal) |
 | `status --member <id> [--wait]` | Progress of setup / supervisor |
 | `serve` | Foreground start. This is the actual process the service invokes. Refuses to start on a non-loopback bind if `CATY_TOKEN` is empty (fail-closed) |
 | `qr [--member <id>] [--qr-delivery auto\|tty\|url]` | Reissue the pairing QR |
