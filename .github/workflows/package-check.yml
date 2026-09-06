@@ -22,7 +22,7 @@ jobs:
       - name: Build sdist and wheel, then twine check --strict
         run: |
           set -euo pipefail
-          python3 -m pip install -q 'build==1.2.2.post1' 'twine==7.0.0'   # same pins as publish.yml
+          python3 -m pip install -q 'build==1.2.2.post1' 'twine==6.1.0'   # NEGATIVE CONTROL — temporary, reverted before merge
           python3 -m build
           ls -l dist
           python3 -m twine check --strict dist/*
