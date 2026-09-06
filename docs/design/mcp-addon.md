@@ -1,6 +1,6 @@
 # Design note — `caty-gateway mcp` (add-on, not scheduled)
 
-Status: design note for Issue #12, revision 2 (after a 3-seat review of r1). **No implementation until the owner says GO.** Size estimate at the end.
+Status: design note for Issue #12, revision 3 (r1 → 3-seat review → r2 → delta review → r3 wording fixes). **No implementation until the owner says GO.** Size estimate at the end.
 
 ## Purpose
 
@@ -22,11 +22,11 @@ Why MCP cannot be the core (recorded in #12): MCP servers are tool boxes the age
 | Tool | Arguments | Returns | Gateway path it reuses |
 |---|---|---|---|
 | `caty.push_image` | `url` (http/https, already reachable from the phone), `title` (≤200 chars; if omitted, the last path segment of the URL), `media_type` (`image` / `video` / `youtube`, optional), `session` (optional) | the gateway's own `POST /push` reply `{ok, id, duplicate, session_id, session_id_source}`, or `{ok:false, error}` with the redacted message | `POST /push` kind `media`, handled by `_do_push` in `caty_gateway.py` (allow-list `open_url` / `media`, `url` must be http(s) without userinfo, `title` required, `media_type` optional), auth via `_require_write_auth`; audience = the member |
-| `caty.status` | none | `{gateway_up, agent, identity, member, gateway_url, pending_pairings}` | `GET /health` → `{ok, agent}` (auth-gated when `require_auth_enabled()`); `GET /identity` → `identity_payload()` (id, name, accent colour, voice engine); `PairingStore.live_count()` from `pairing_store.py` = number of **unclaimed** QR credentials (a successful claim deletes the record and leaves a `consumed` tombstone, so the store does not say "paired: yes") |
+| `caty.status` | none | `{gateway_up, agent, identity, member, gateway_url, pending_pairings}` | `GET /health` → `{ok, agent}` (auth-gated only when `require_auth_enabled()`); `GET /identity` → `identity_payload()` (id, name, accent colour, voice engine; always behind `_require_auth`, which the client satisfies with `CATY_TOKEN`); `PairingStore.live_count()` from `pairing_store.py` = number of **unclaimed** QR credentials (a successful claim deletes the record and leaves a `consumed` tombstone, so the store does not say "paired: yes") |
 
 `push_image` in v1 therefore does what `caty-gateway push media` does today, from inside the agent, and nothing more. Local file paths are **not** accepted in v1: `share_store.py` is session-bound, single-use staging for **app → agent** shares (`POST /share`, consumed by the voice turn), and the gateway has no route that serves a PC-local file to the phone. Adding one is new server surface (phase 2).
 
-Idempotency: `PushEventQueue.publish_with_status` treats an `event_key` as a no-op only when kind, payload and audience are identical; a different payload under the same key is a 409 `event_key conflict`. The tool derives `event_key` from `sha256(url + title + media_type)` and sends exactly that payload, so a retried call is a no-op and a changed title is a conflict, which is surfaced as `ok:false`.
+Idempotency: `PushEventQueue.publish_with_status` treats an `event_key` as a no-op only when kind, payload and audience are identical; the same key with a different payload is a 409 `event_key conflict`. The tool derives `event_key` from the sha256 of the canonical JSON of the payload it actually POSTs (sorted keys; `media_type` absent when omitted, never the string `None`), so a retried identical call returns `duplicate:true`, and a call with a changed title is simply a new push (new key, `duplicate:false`). A 409 can therefore only come from a key collision with an event published by another producer, and is surfaced as `ok:false`.
 
 ### phase 2 (separate Issues; each is new gateway surface, so not "reuse")
 
@@ -60,7 +60,7 @@ Idempotency: `PushEventQueue.publish_with_status` treats an `event_key` as a no-
 ## Acceptance criteria (proposal for the v1 implementation Issue)
 
 1. `caty-gateway mcp --member <m>` starts, answers `initialize` and `tools/list` with exactly `caty.push_image` and `caty.status`, writes nothing but JSON-RPC to stdout, and exits cleanly on stdin EOF.
-2. `caty.push_image` with a public PNG URL reaches the phone (real-device smoke, layer B of #2); a second identical call returns `duplicate:true`; a call with a changed title returns `ok:false` (409).
+2. `caty.push_image` with a public PNG URL reaches the phone (real-device smoke, layer B of #2); a second identical call returns `duplicate:true`; a call with a changed title is a new push (`duplicate:false`).
 3. `caty.push_image` with a `file://` URL, a local path, or a URL with userinfo is rejected client-side with `ok:false` before any HTTP call.
 4. `caty.status` returns `gateway_up:false` when the gateway is down, and `gateway_up:true` with `agent`, `identity.name`, `member`, `gateway_url` and an integer `pending_pairings` when it is up; no token in the output.
 5. Wrong or missing token → `ok:false` with the redacted gateway message; the MCP process's stderr contains no token.
