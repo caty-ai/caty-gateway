@@ -191,7 +191,7 @@ Replace `me` with a short name for yourself using letters and numbers (or just k
 
 **4. Scan the QR code**
 
-Open CatyPhone and scan the QR code shown on screen. Your iPhone and computer will connect, and you'll be able to start talking. The QR code expires after 10 minutes, and can only be scanned once. To get a new one, run `caty-gateway qr` with the same environment variables as the service (see [Reissuing the QR](docs/engineering.md#reissue-qr)).
+Open CatyPhone and scan the QR code shown on screen. Your iPhone and computer will connect, and you'll be able to start talking. The QR code expires after 10 minutes, and can only be scanned once. To get a new one, run `caty-gateway qr --member <id>` (see [Reissuing the QR](docs/engineering.md#reissue-qr)).
 
 <details>
 <summary>If something goes wrong (command not found, no uv or pipx, Python too old)</summary>

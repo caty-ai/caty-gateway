@@ -191,7 +191,7 @@ caty-gateway setup --member me --backend claude
 
 **4. 扫描二维码**
 
-打开 CatyPhone，扫描显示出来的二维码。这样 iPhone 和电脑就连接上了，可以开始用语音对话。二维码 10 分钟后会失效，扫过一次也就不能再用。想重新显示，请在与服务相同的环境变量下执行 `caty-gateway qr`（步骤见 [重新生成二维码](docs/engineering.md#reissue-qr)）。
+打开 CatyPhone，扫描显示出来的二维码。这样 iPhone 和电脑就连接上了，可以开始用语音对话。二维码 10 分钟后会失效，扫过一次也就不能再用。想重新显示，请执行 `caty-gateway qr --member <id>`（步骤见 [重新生成二维码](docs/engineering.md#reissue-qr)）。
 
 <details>
 <summary>遇到问题时（提示 command not found、没有 uv 或 pipx、Python 版本太旧）</summary>
