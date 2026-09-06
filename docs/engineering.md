@@ -197,6 +197,23 @@ make gate        # publication gate alone (personal URLs, denylist, selftest)
 
 The procedure for adding a backend is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+### Publishing a release
+
+Owner-only. PyPI is fed by `.github/workflows/publish.yml` through Trusted Publishing (no stored token). The `pypi` GitHub environment requires a reviewer and only deploys from `tag: v*` refs, so the run must be dispatched **on the tag**, not on `main`.
+
+1. Bump `[project].version` in `pyproject.toml` on `main`, then cut the annotated tag and the GitHub Release (`git tag -a vX.Y.Z` → `git push origin vX.Y.Z` → `gh release create vX.Y.Z`)
+2. Dispatch the workflow on that tag:
+
+   ```sh
+   gh workflow run publish.yml --repo caty-ai/caty-gateway --ref vX.Y.Z -f version=X.Y.Z
+   ```
+
+   Without `--ref` the run starts on `main`; the `build` job fails closed on that mismatch (before this guard, the `publish` job was rejected with `Branch "main" is not allowed to deploy to pypi`)
+3. Open the run under Actions and approve the `pypi` environment
+4. Verify `https://pypi.org/project/caty-gateway/X.Y.Z/` (`pip install caty-gateway==X.Y.Z`)
+
+The workflow definition is taken from the tag, not from `main`: a fix to `publish.yml` only takes effect from the next tag.
+
 ### Private scrub list
 
 Keep local detectors in the git-ignored `<root>/.scrub-private`, or set

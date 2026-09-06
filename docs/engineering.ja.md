@@ -197,6 +197,23 @@ make gate        # 公開ゲート単体（個人 URL・denylist・selftest）
 
 backend の追加手順は [CONTRIBUTING.md](../CONTRIBUTING.md) にあります。
 
+### リリースの公開
+
+オーナー専用です。PyPI への配布は `.github/workflows/publish.yml` の Trusted Publishing で行い、トークンは保存しません。GitHub 環境 `pypi` は承認者が必要で、`tag: v*` の ref からしかデプロイできないため、ワークフローは `main` ではなく**タグの上で**起動します。
+
+1. `main` の `pyproject.toml` で `[project].version` を上げ、annotated tag と GitHub Release を作ります（`git tag -a vX.Y.Z` → `git push origin vX.Y.Z` → `gh release create vX.Y.Z`）
+2. そのタグを指定してワークフローを起動します:
+
+   ```sh
+   gh workflow run publish.yml --repo caty-ai/caty-gateway --ref vX.Y.Z -f version=X.Y.Z
+   ```
+
+   `--ref` を省くと `main` で起動し、`build` job がその不一致で fail-closed に止まります（このガードを入れる前は `publish` job が `Branch "main" is not allowed to deploy to pypi` で拒否されていました）
+3. Actions で該当 run を開き、`pypi` 環境を承認します
+4. `https://pypi.org/project/caty-gateway/X.Y.Z/` で確認します（`pip install caty-gateway==X.Y.Z`）
+
+ワークフロー定義は `main` ではなくタグ時点のものが使われます。`publish.yml` を直したら、次のタグから効きます。
+
 ### Private scrub list
 
 個人名や内部パスの検査リストは、Git 管理外の `<root>/.scrub-private` に置きます。
