@@ -20,13 +20,19 @@ caty-gateway setup --member me --backend claude               # install service 
 
 `setup` proceeds in this order: preflight → conflict detection → service install → wait for `/health` → verify `/identity` authentication → check voice status → show QR. If it stops partway, run `caty-gateway status --member me` to see where it is; re-running the same command resumes from that point.
 
+Over ssh or from a script (any non-interactive stdin), `setup` cannot ask `Run this plan? [y/N]` and exits with `stdin is not interactive; rerun with --yes to accept the plan`. Pass `--yes` to accept the plan, and set `CATY_QR_DELIVERY=tty` so the final QR is drawn as text: with the default `auto`, a non-TTY falls back to the URL mode, which blocks until the one-shot PNG is fetched or its credential expires.
+
+```sh
+CATY_QR_DELIVERY=tty caty-gateway setup --member <id> --backend <b> --yes
+```
+
 <a id="commands"></a>
 
 ### Subcommands
 
 | Command | Role |
 |---|---|
-| `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--no-history] [--reset]` | One-shot setup from preflight through showing the QR. `--plan-only` only displays the plan |
+| `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--yes] [--no-history] [--reset]` | One-shot setup from preflight through showing the QR. `--plan-only` only displays the plan; `--yes` accepts it without the prompt (required on a non-TTY) |
 | `status --member <id> [--wait]` | Progress of setup / supervisor |
 | `serve` | Foreground start. This is the actual process the service invokes. Refuses to start on a non-loopback bind if `CATY_TOKEN` is empty (fail-closed) |
 | `qr [--member <id>] [--qr-delivery auto\|tty\|url]` | Reissue the pairing QR |
