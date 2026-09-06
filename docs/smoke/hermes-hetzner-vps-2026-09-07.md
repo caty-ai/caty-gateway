@@ -1,15 +1,15 @@
 ---
 route: hermes
 backend: hermes
-host: hetzner-vps (Linux VPS on the tailnet; reached with `ssh hetzner-vps-admin` from the dev MBP)
+host: hetzner-vps (Linux VPS on the tailnet; reached over ssh as the host's admin user from the dev MBP)
 os: Ubuntu 24.04.4 LTS (x86_64, 96 vCPU, no GPU)
-date: 2026-09-07
+date: 2026-09-07 (writer's local date, UTC+7; the commands ran 2026-09-06 19:4x–19:5x UTC, in the same session as the Ollama record on this host)
 layer: A
 caty_gateway_version: caty-gateway 0.1.4 from PyPI (same isolated install as `ollama-hetzner-vps-2026-09-07.md`)
 result: NOT RUN (steps 1-2 measured; stopped before setup — no Hermes API key that is not a household member's)
 ---
 
-Supersedes `hermes-hetzner-vps-2026-09-06.md` (host not reachable then). This time the host was reachable and the clean install and `doctor` ran; the route stops at the backend key.
+Supersedes `hermes-hetzner-vps-2026-09-06.md`, which was written by an earlier automated session (2026-09-06, ~17:00 UTC) that had no shell access to the host. This later session had the admin ssh route, so the clean install and `doctor` ran; the route stops at the backend key.
 
 ## Steps
 
@@ -17,7 +17,11 @@ Supersedes `hermes-hetzner-vps-2026-09-06.md` (host not reachable then). This ti
 |---|---|---|---|
 | 1 | clean install | PASS | shared with the Ollama record on this host: `uv tool install caty-gateway` → `caty-gateway==0.1.4` in `UV_TOOL_DIR=~/caty-smoke/tools` |
 | 2 | doctor all PASS | FAIL (expected: no key) | `doctor --backend hermes --port 18772` with no `CATY_HERMES_*` set: 12 PASS, 2 FAIL — `hermes API key: set CATY_HERMES_API_KEY` and `hermes models: start Hermes and verify CATY_HERMES_URL and CATY_HERMES_API_KEY` |
-| 3-7 | — | not attempted | no admin-owned Hermes endpoint + key to point the smoke member at (below) |
+| 3 | setup / QR issued | not attempted | no admin-owned Hermes endpoint + key to point the smoke member at (Findings) |
+| 4 | pair claim (phone-sim) | not attempted | — |
+| 5 | turns 1-2 | not attempted | — |
+| 6 | restart + turn 3 (resume) | not attempted | — |
+| 7 | token/pair not in logs | not attempted | — |
 
 ## phone-sim summary
 

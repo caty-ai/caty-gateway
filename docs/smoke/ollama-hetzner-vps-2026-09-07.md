@@ -1,9 +1,9 @@
 ---
 route: ollama
 backend: openai-compat
-host: hetzner-vps (Linux VPS on the tailnet; reached with `ssh hetzner-vps-admin` from the dev MBP)
+host: hetzner-vps (Linux VPS on the tailnet; reached over ssh as the host's admin user from the dev MBP)
 os: Ubuntu 24.04.4 LTS (x86_64, 96 vCPU, no GPU)
-date: 2026-09-07
+date: 2026-09-07 (writer's local date, UTC+7; the run itself is 2026-09-06 19:47–19:53 UTC — the phone-sim JSON and the host journal below carry the UTC / host-local timestamps)
 layer: A
 caty_gateway_version: caty-gateway 0.1.4 from PyPI (uv 0.11.2, already on the host; `uv tool install caty-gateway` → uv-managed Python 3.11.15), isolated prefix UV_TOOL_DIR=~/caty-smoke/tools, UV_TOOL_BIN_DIR=~/caty-smoke/bin
 result: PARTIAL (step 3 FAIL — gateway defect #38; steps 4-7 PASS after a two-line manual fix of the generated unit)
@@ -11,7 +11,7 @@ result: PARTIAL (step 3 FAIL — gateway defect #38; steps 4-7 PASS after a two-
 
 Backend: Ollama 0.20.2 already running on the host on `127.0.0.1:11434` (CPU only), model `gemma3:1b` (the smallest of the models pulled there). `CATY_OPENAI_BASE_URL=http://127.0.0.1:11434/v1`. Member `smoke-ollama`, port 18771 (free; the host also runs other gateways for household members on their own ports — none was touched).
 
-phone-sim ran on the dev MBP against the gateway's public URL on the VPS (tailnet 100.98.83.100:18771); the env read, the restart and the journal read went over `ssh hetzner-vps-admin`, i.e. the "Another tailnet host: Linux gateway" block of `README.md`. Claim therefore came from a tailnet peer, as a phone would. The round trip MBP ↔ VPS is about 0.4 s (see step 6).
+phone-sim ran on the dev MBP against the gateway's public URL on the VPS (tailnet 100.98.83.100:18771); the env read, the restart and the journal read went over ssh, i.e. the "Another tailnet host: Linux gateway" block of `README.md`. Claim therefore came from a tailnet peer, as a phone would. The round trip MBP ↔ VPS is about 0.4 s (see step 6).
 
 ## Steps
 
@@ -22,7 +22,7 @@ phone-sim ran on the dev MBP against the gateway's public URL on the VPS (tailne
 | 3 | setup / QR issued | **FAIL** | `setup --member smoke-ollama --backend openai-compat --yes --port 18771` with `CATY_QR_DELIVERY=tty` (ssh session) wrote the env file and the user unit, but systemd refused the unit: `…service:8: WorkingDirectory= path is not absolute: "/home/<user>"` (the value is rendered with literal double quotes; `EnvironmentFile=` too). Setup ended after 30.6 s with `Setup status: failed / Current phase: health`; no QR was issued. → #38. **Workaround for the smoke only**: removed the quotes from those two lines of the generated `caty-gateway-smoke-ollama.service`, `systemctl --user daemon-reload && enable --now` → `active`, health on the tailnet URL answers (401 without a token, as expected) |
 | 4 | pair claim (phone-sim) | PASS | self-issue via `/pair/new` then one `/pair/claim` from the tailnet: HTTP 200, 0.443 s (`pair_id` 02f069c2) |
 | 5 | turns 1-2 | PASS | turn 1: 200 in 2.78 s, reply `OK`; turn 2: 200 in 2.79 s; `degraded: "tts"` on both (no TTS engine on this headless VPS: journal shows `stage=stream_tts status=batch_fallback error_type=ConnectionRefusedError` then `stage=batch_tts status=text_only`; the text reply is intact) |
-| 6 | restart + turn 3 (resume) | PASS (restart proven by the journal, not by a health gap) | `ssh … systemctl --user restart caty-gateway-smoke-ollama`: journal `Stopping` 21:52:54.070 → `Started` 21:52:54.094 (24 ms), MainPID 3141071 → 3142623. phone-sim reports `restart.observed: false` because the gateway was back before the ssh command returned (outage shorter than the ~0.4 s round trip); three earlier attempts with `--require-restart-observed` (`restart`, `restart --no-block`, `stop && start --no-block`) all stopped there → #39, so the final run dropped that flag. Turn 3: 200 in 2.86 s, `resume_recall: true` (the codeword from turn 1 came back after the restart, i.e. the on-disk history was replayed) |
+| 6 | restart + turn 3 (resume) | PASS (restart proven by the journal, not by a health gap) | `ssh … systemctl --user restart caty-gateway-smoke-ollama`: journal `Stopping` 21:52:54.070 → `Started` 21:52:54.094 (host local time; the two systemd lines are 24 ms apart, an upper bound on the stop→start job, not a measured socket outage), MainPID 3141071 → 3142623. phone-sim reports `restart.observed: false` because the gateway was back before the ssh command returned (outage shorter than the ~0.4 s round trip); three earlier attempts with `--require-restart-observed` (`restart`, `restart --no-block`, `stop && start --no-block`) all stopped there → #39, so the final run dropped that flag. Turn 3: 200 in 2.86 s, `resume_recall: true` (the codeword from turn 1 came back after the restart, i.e. the on-disk history was replayed) |
 | 7 | token/pair not in logs | PASS | `--log-cmd "ssh … journalctl --user -u caty-gateway-smoke-ollama --no-pager"` → `log_check: pass`; independent check on the host over the 117-line journal: `grep -cE '[0-9a-f]{8}\.[0-9a-f]{32}'` = 0 and a literal search for the member's `CATY_TOKEN` value = 0 |
 
 Wall time of the final phone-sim run: 18 s (qr → done).
