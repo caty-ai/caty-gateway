@@ -11,6 +11,7 @@ caty-gateway is an HTTP gateway that sits between CatyPhone (the iOS client) and
 The prerequisites are just three things: `ffmpeg` / `ffprobe`, an already logged-in Tailscale, and the CLI or server for the backend you plan to use.
 
 ```sh
+curl -fsSL https://caty.talk/gateway/install.sh | sh   # one-command install (coming with the PyPI release)
 uv tool install caty-gateway            # or: pipx install caty-gateway
 caty-gateway doctor --backend claude    # passive checks only. Fix until everything is PASS
 caty-gateway setup --member me --backend claude --plan-only   # preview the planned actions (writes nothing)

@@ -2,17 +2,17 @@
 
 <div align="center">
 
-**🇺🇸 English** ｜ [🇯🇵 日本語](README.ja.md) ｜ [🇨🇳 简体中文](README.zh.md) ｜ [🇹🇭 ไทย](README.th.md)
+[**🇺🇸 English**](https://github.com/caty-ai/caty-gateway/blob/main/README.md) ｜ [🇯🇵 日本語](https://github.com/caty-ai/caty-gateway/blob/main/README.ja.md) ｜ [🇨🇳 简体中文](https://github.com/caty-ai/caty-gateway/blob/main/README.zh.md) ｜ [🇹🇭 ไทย](https://github.com/caty-ai/caty-gateway/blob/main/README.th.md)
 
-![caty-gateway hero image. An iPhone (CatyPhone) on the left, and an AI running inside a computer on the right. A single line connects the two, with a small gate (gateway) partway along it, and the line only travels inside a closed private network.](assets/readme/hero.png)
+![caty-gateway hero image. An iPhone (CatyPhone) on the left, and an AI running inside a computer on the right. A single line connects the two, with a small gate (gateway) partway along it, and the line only travels inside a closed private network.](https://raw.githubusercontent.com/caty-ai/caty-gateway/main/assets/readme/hero.png)
 
 <h4>A small background program that lets you talk by voice, from the CatyPhone iPhone app, to the AI running on your computer.</h4>
 
 [![CI](https://github.com/caty-ai/caty-gateway/actions/workflows/test-lint.yml/badge.svg?event=pull_request)](https://github.com/caty-ai/caty-gateway/actions/workflows/test-lint.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/caty-ai/caty-gateway/blob/main/LICENSE)
 ![python](https://img.shields.io/badge/python-3.10%2B-lightgrey?logo=python&logoColor=white)
 ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
-![PyPI](https://img.shields.io/badge/PyPI-not%20yet-lightgrey)
+[![PyPI](https://img.shields.io/pypi/v/caty-gateway)](https://pypi.org/project/caty-gateway/)
 
 [What it does](#what) ｜ [What you need](#requirements) ｜ [Getting started](#start) ｜ [Why it is safe](#safety) ｜ [When something goes wrong](#troubleshooting) ｜ [Learn more](#more)
 
@@ -21,7 +21,7 @@ ask it to keep going, or show it a photo or your screen. Conversations go to the
 
 **Take your usual AI with you, in your pocket.**
 
-🔧 [Engineering docs](docs/engineering.md) ｜ 📘 [Reference](docs/reference.md)
+🔧 [Engineering docs](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md) ｜ 📘 [Reference](https://github.com/caty-ai/caty-gateway/blob/main/docs/reference.md)
 
 </div>
 
@@ -39,7 +39,7 @@ If even one of these rings a bell, caty-gateway is for you.
 The common cause is simple: **your computer's AI has no way for your phone to reach it.**
 caty-gateway takes care of exactly that, and nothing more.
 
-Note that caty-gateway is a tool for **people already running an AI agent or a local LLM on their computer**. It's meant to be used together with the CatyPhone iPhone app. If you don't have an AI running on your computer, or don't use CatyPhone, this isn't for you.
+Note that caty-gateway is a tool for **people already running an AI agent or a local LLM on their computer**. It's meant to be used together with the [CatyPhone](https://caty.talk) iPhone app. If you don't have an AI running on your computer, or don't use CatyPhone, this isn't for you.
 
 ---
 
@@ -149,6 +149,14 @@ The commands are spelled out on purpose, so the agent doesn't have to guess how 
 
 **1. Install**
 
+The one-command installer sets up `uv` if it's missing, then installs caty-gateway. It is **coming with the PyPI release**; until then, use the `uv` command below it.
+
+```sh
+curl -fsSL https://caty.talk/gateway/install.sh | sh
+```
+
+If you already have `uv`:
+
 ```sh
 uv tool install caty-gateway
 ```
@@ -191,7 +199,7 @@ Replace `me` with a short name for yourself using letters and numbers (or just k
 
 **4. Scan the QR code**
 
-Open CatyPhone and scan the QR code shown on screen. Your iPhone and computer will connect, and you'll be able to start talking. The QR code expires after 10 minutes, and can only be scanned once. To get a new one, run `caty-gateway qr --member <id>` (see [Reissuing the QR](docs/engineering.md#reissue-qr)).
+Open CatyPhone and scan the QR code shown on screen. Your iPhone and computer will connect, and you'll be able to start talking. The QR code expires after 10 minutes, and can only be scanned once. To get a new one, run `caty-gateway qr --member <id>` (see [Reissuing the QR](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr)).
 
 <details>
 <summary>If something goes wrong (command not found, no uv or pipx, Python too old)</summary>
@@ -234,12 +242,12 @@ caty-gateway only handles the "front door" — it doesn't do anything extra to y
 
   conversation history is stored at `~/.local/state/caty-gateway/history/<name>/`, and deleting that folder deletes it
 
-The gateway sends the conversation only to the AI you chose. Beyond that, nothing goes out except for **optional features you turn on yourself**, such as text-to-speech or avatar generation. Which features send what is documented in [privacy](docs/privacy.md).
+The gateway sends the conversation only to the AI you chose. Beyond that, nothing goes out except for **optional features you turn on yourself**, such as text-to-speech or avatar generation. Which features send what is documented in [privacy](https://github.com/caty-ai/caty-gateway/blob/main/docs/privacy.md).
 
 <details>
 <summary>If you want to stop using it (full removal steps)</summary>
 
-1. Stop and remove the background service (macOS: `~/Library/LaunchAgents/ai.caty.gateway.<name>.plist`; Linux: `caty-gateway-<name>.service`). Full steps are in the [Engineering docs](docs/engineering.md#uninstall)
+1. Stop and remove the background service (macOS: `~/Library/LaunchAgents/ai.caty.gateway.<name>.plist`; Linux: `caty-gateway-<name>.service`). Full steps are in the [Engineering docs](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#uninstall)
 2. Delete the config and history folders: `~/.config/caty-gateway/`, `~/.local/state/caty-gateway/`, `~/.local/share/caty-gateway/`
 3. Remove the program itself: `uv tool uninstall caty-gateway` (or `pipx uninstall caty-gateway`)
 
@@ -281,14 +289,14 @@ That AI's CLI either isn't installed or you aren't logged in. `WARN claude crede
 <details>
 <summary>It started, but scanning the QR code doesn't connect</summary>
 
-In most cases, your iPhone isn't on the same Tailscale network as your computer. Log in to the same Tailscale account on your iPhone's Tailscale app, confirm the connection is on, and generate a fresh QR code by following [Reissuing the QR](docs/engineering.md#reissue-qr). Any route other than Tailscale (like your home Wi-Fi's IP address) may start up fine but will get stuck at pairing.
+In most cases, your iPhone isn't on the same Tailscale network as your computer. Log in to the same Tailscale account on your iPhone's Tailscale app, confirm the connection is on, and generate a fresh QR code by following [Reissuing the QR](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr). Any route other than Tailscale (like your home Wi-Fi's IP address) may start up fine but will get stuck at pairing.
 
 </details>
 
 <details>
 <summary>Scanning the QR code says it "expired"</summary>
 
-QR codes expire 10 minutes after they're shown. Follow [Reissuing the QR](docs/engineering.md#reissue-qr) to get a new one.
+QR codes expire 10 minutes after they're shown. Follow [Reissuing the QR](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr) to get a new one.
 
 </details>
 
@@ -304,11 +312,11 @@ Documentation is split by what you're looking for. The engineering guide and the
 
 | What you want to know | Page |
 |---|---|
-| How it works, all commands, running the service, uninstalling | [Engineering docs](docs/engineering.md) |
-| Every command's arguments, where files are saved, pairing rules | [Reference](docs/reference.md) |
-| Full table of environment variables (auto-generated) | [docs/env.md](docs/env.md) |
-| What each feature sends externally | [docs/privacy.md](docs/privacy.md) |
-| Pairing protocol details | [docs/contracts/pairing-v1.md](docs/contracts/pairing-v1.md) |
+| How it works, all commands, running the service, uninstalling | [Engineering docs](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md) |
+| Every command's arguments, where files are saved, pairing rules | [Reference](https://github.com/caty-ai/caty-gateway/blob/main/docs/reference.md) |
+| Full table of environment variables (auto-generated) | [docs/env.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/env.md) |
+| What each feature sends externally | [docs/privacy.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/privacy.md) |
+| Pairing protocol details | [docs/contracts/pairing-v1.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/contracts/pairing-v1.md) |
 
 Adding or fixing a backend is welcome — here's how.
 
@@ -320,7 +328,7 @@ Adding or fixing a backend is welcome — here's how.
 
 Adding support for the AI you use can be as simple as writing one preset.
 
-Setup steps, test conventions, and the review process are in [CONTRIBUTING.md](CONTRIBUTING.md). For bugs or questions, please open an [issue](https://github.com/caty-ai/caty-gateway/issues).
+Setup steps, test conventions, and the review process are in [CONTRIBUTING.md](https://github.com/caty-ai/caty-gateway/blob/main/CONTRIBUTING.md). For bugs or questions, please open an [issue](https://github.com/caty-ai/caty-gateway/issues).
 
 ---
 
@@ -328,7 +336,7 @@ Setup steps, test conventions, and the review process are in [CONTRIBUTING.md](C
 
 ## License
 
-[MIT License](LICENSE). We chose a license that lets anyone freely use and build with this, so you can add a front door to your own AI too.
+[MIT License](https://github.com/caty-ai/caty-gateway/blob/main/LICENSE). We chose a license that lets anyone freely use and build with this, so you can add a front door to your own AI too.
 
 ---
 

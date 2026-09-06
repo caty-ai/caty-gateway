@@ -2,17 +2,17 @@
 
 <div align="center">
 
-[🇺🇸 English](README.md) ｜ [🇯🇵 日本語](README.ja.md) ｜ [🇨🇳 简体中文](README.zh.md) ｜ **🇹🇭 ไทย**
+[🇺🇸 English](https://github.com/caty-ai/caty-gateway/blob/main/README.md) ｜ [🇯🇵 日本語](https://github.com/caty-ai/caty-gateway/blob/main/README.ja.md) ｜ [🇨🇳 简体中文](https://github.com/caty-ai/caty-gateway/blob/main/README.zh.md) ｜ [**🇹🇭 ไทย**](https://github.com/caty-ai/caty-gateway/blob/main/README.th.md)
 
-![ภาพ hero ของ caty-gateway ทางซ้ายคือ iPhone (CatyPhone) ทางขวาคือ AI ที่ทำงานอยู่ในคอมพิวเตอร์ มีเส้นหนึ่งเส้นเชื่อมทั้งสองเข้าด้วยกัน ตรงกลางเส้นมีประตูเล็ก ๆ (gateway) และเส้นนี้วิ่งอยู่ภายในเครือข่ายส่วนตัวที่ปิดเท่านั้น](assets/readme/hero.png)
+![ภาพ hero ของ caty-gateway ทางซ้ายคือ iPhone (CatyPhone) ทางขวาคือ AI ที่ทำงานอยู่ในคอมพิวเตอร์ มีเส้นหนึ่งเส้นเชื่อมทั้งสองเข้าด้วยกัน ตรงกลางเส้นมีประตูเล็ก ๆ (gateway) และเส้นนี้วิ่งอยู่ภายในเครือข่ายส่วนตัวที่ปิดเท่านั้น](https://raw.githubusercontent.com/caty-ai/caty-gateway/main/assets/readme/hero.png)
 
 <h4>โปรแกรมขนาดเล็กที่ทำงานอยู่เบื้องหลัง ช่วยให้คุณพูดคุยด้วยเสียงกับ AI ที่ทำงานอยู่บนคอมพิวเตอร์ของคุณ ผ่านแอป iPhone ชื่อ CatyPhone</h4>
 
 [![CI](https://github.com/caty-ai/caty-gateway/actions/workflows/test-lint.yml/badge.svg?event=pull_request)](https://github.com/caty-ai/caty-gateway/actions/workflows/test-lint.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/caty-ai/caty-gateway/blob/main/LICENSE)
 ![python](https://img.shields.io/badge/python-3.10%2B-lightgrey?logo=python&logoColor=white)
 ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
-![PyPI](https://img.shields.io/badge/PyPI-not%20yet-lightgrey)
+[![PyPI](https://img.shields.io/pypi/v/caty-gateway)](https://pypi.org/project/caty-gateway/)
 
 [ทำอะไรได้บ้าง](#what) ｜ [สิ่งที่ต้องมี](#requirements) ｜ [เริ่มใช้งาน](#start) ｜ [เหตุผลที่วางใจได้](#safety) ｜ [เมื่อมีปัญหา](#troubleshooting) ｜ [รายละเอียดเพิ่มเติม](#more)
 
@@ -21,7 +21,7 @@
 
 **พา AI ที่คุ้นเคย ติดกระเป๋าออกไปด้วย**
 
-🔧 [เอกสารสำหรับวิศวกร](docs/engineering.md) ｜ 📘 [ข้อกำหนดโดยละเอียด](docs/reference.md)
+🔧 [เอกสารสำหรับวิศวกร](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md) ｜ 📘 [ข้อกำหนดโดยละเอียด](https://github.com/caty-ai/caty-gateway/blob/main/docs/reference.md)
 
 </div>
 
@@ -39,7 +39,7 @@
 สาเหตุร่วมนั้นเรียบง่ายมาก คือ **AI บนคอมพิวเตอร์ไม่มีทางเข้าจากสมาร์ตโฟน**
 caty-gateway รับหน้าที่เป็นทางเข้านั้นเพียงอย่างเดียว
 
-caty-gateway เป็นเครื่องมือสำหรับ **ผู้ที่รัน AI agent หรือ local LLM อยู่บนคอมพิวเตอร์** และใช้งานคู่กับแอป iPhone ชื่อ CatyPhone หากคอมพิวเตอร์ของคุณไม่มี AI หรือไม่ได้ใช้ CatyPhone เครื่องมือนี้จะไม่เหมาะกับคุณ
+caty-gateway เป็นเครื่องมือสำหรับ **ผู้ที่รัน AI agent หรือ local LLM อยู่บนคอมพิวเตอร์** และใช้งานคู่กับแอป iPhone ชื่อ [CatyPhone](https://caty.talk) หากคอมพิวเตอร์ของคุณไม่มี AI หรือไม่ได้ใช้ CatyPhone เครื่องมือนี้จะไม่เหมาะกับคุณ
 
 ---
 
@@ -149,6 +149,14 @@ Tailscale คือแอปฟรีที่สร้างเครือข�
 
 **1. ติดตั้ง**
 
+ตัวติดตั้งแบบคำสั่งเดียวจะติดตั้ง `uv` ให้ก่อนถ้ายังไม่มี แล้วจึงติดตั้ง caty-gateway **จะพร้อมใช้งานพร้อมกับการเผยแพร่บน PyPI** (coming with the PyPI release) ระหว่างนี้ให้ใช้คำสั่ง `uv` ด้านล่างแทน
+
+```sh
+curl -fsSL https://caty.talk/gateway/install.sh | sh
+```
+
+ถ้ามี `uv` อยู่แล้ว:
+
 ```sh
 uv tool install caty-gateway
 ```
@@ -191,7 +199,7 @@ caty-gateway setup --member me --backend claude
 
 **4. สแกน QR**
 
-เปิด CatyPhone แล้วสแกนรหัส QR ที่แสดงขึ้นมา iPhone กับคอมพิวเตอร์จะเชื่อมต่อกัน และคุณจะพูดคุยกันได้ QR จะหมดอายุใน 10 นาที และเมื่อสแกนใช้แล้วครั้งหนึ่งจะใช้ซ้ำไม่ได้ หากต้องการแสดง QR ใหม่อีกครั้ง ให้รัน `caty-gateway qr --member <id>` (ดูขั้นตอนที่ [การออก QR ใหม่](docs/engineering.md#reissue-qr))
+เปิด CatyPhone แล้วสแกนรหัส QR ที่แสดงขึ้นมา iPhone กับคอมพิวเตอร์จะเชื่อมต่อกัน และคุณจะพูดคุยกันได้ QR จะหมดอายุใน 10 นาที และเมื่อสแกนใช้แล้วครั้งหนึ่งจะใช้ซ้ำไม่ได้ หากต้องการแสดง QR ใหม่อีกครั้ง ให้รัน `caty-gateway qr --member <id>` (ดูขั้นตอนที่ [การออก QR ใหม่](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr))
 
 <details>
 <summary>เมื่อติดขัด (command not found / ไม่มี uv หรือ pipx / Python เก่าเกินไป)</summary>
@@ -234,12 +242,12 @@ caty-gateway ทำหน้าที่เป็นเพียง "ทาง�
 
   ประวัติการสนทนาถูกเก็บไว้ที่ `~/.local/state/caty-gateway/history/<ชื่อ>/` ลบโฟลเดอร์นี้ก็ลบข้อมูลได้
 
-gateway ส่งบทสนทนาไปยัง AI ที่คุณเลือกเท่านั้น นอกเหนือจากนั้น สิ่งที่ถูกส่งออกไปภายนอกมีเฉพาะกรณีที่คุณ **เปิดใช้งานฟีเจอร์เสริมด้วยตัวเอง** เช่น การอ่านออกเสียงหรือการสร้างอวาตาร์เท่านั้น รายละเอียดว่าฟีเจอร์ใดส่งอะไรออกไป ดูได้ที่ [ความเป็นส่วนตัว](docs/privacy.md)
+gateway ส่งบทสนทนาไปยัง AI ที่คุณเลือกเท่านั้น นอกเหนือจากนั้น สิ่งที่ถูกส่งออกไปภายนอกมีเฉพาะกรณีที่คุณ **เปิดใช้งานฟีเจอร์เสริมด้วยตัวเอง** เช่น การอ่านออกเสียงหรือการสร้างอวาตาร์เท่านั้น รายละเอียดว่าฟีเจอร์ใดส่งอะไรออกไป ดูได้ที่ [ความเป็นส่วนตัว](https://github.com/caty-ai/caty-gateway/blob/main/docs/privacy.md)
 
 <details>
 <summary>เมื่อต้องการเลิกใช้งาน (ขั้นตอนลบทั้งหมด)</summary>
 
-1. หยุดและถอนบริการเบื้องหลัง (macOS คือ `~/Library/LaunchAgents/ai.caty.gateway.<ชื่อ>.plist`, Linux คือ `caty-gateway-<ชื่อ>.service`) ขั้นตอนละเอียดดูที่ [เอกสารสำหรับวิศวกร](docs/engineering.md#uninstall)
+1. หยุดและถอนบริการเบื้องหลัง (macOS คือ `~/Library/LaunchAgents/ai.caty.gateway.<ชื่อ>.plist`, Linux คือ `caty-gateway-<ชื่อ>.service`) ขั้นตอนละเอียดดูที่ [เอกสารสำหรับวิศวกร](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#uninstall)
 2. ลบโฟลเดอร์การตั้งค่าและบันทึก: `~/.config/caty-gateway/`, `~/.local/state/caty-gateway/`, `~/.local/share/caty-gateway/`
 3. ลบตัวโปรแกรม: `uv tool uninstall caty-gateway` (ถ้าใช้ pipx ก็ `pipx uninstall caty-gateway`)
 
@@ -281,14 +289,14 @@ gateway ไม่ได้สร้างอะไรไว้ที่ฝั่
 <details>
 <summary>เริ่มระบบสำเร็จแล้ว แต่สแกน QR แล้วเชื่อมต่อไม่ได้</summary>
 
-ส่วนใหญ่เกิดจาก iPhone ไม่ได้อยู่ในเครือข่าย Tailscale เดียวกันกับคอมพิวเตอร์ ให้ล็อกอินแอป Tailscale บน iPhone ด้วยบัญชีเดียวกัน ตรวจสอบว่าการเชื่อมต่อเปิดอยู่ แล้วออก QR ใหม่ตามขั้นตอนที่ [การออก QR ใหม่](docs/engineering.md#reissue-qr) เส้นทางอื่นที่ไม่ใช่ Tailscale (เช่น IP ของ Wi-Fi ที่บ้าน) อาจเริ่มระบบได้ แต่จะติดขัดที่ขั้นตอนจับคู่ (pairing)
+ส่วนใหญ่เกิดจาก iPhone ไม่ได้อยู่ในเครือข่าย Tailscale เดียวกันกับคอมพิวเตอร์ ให้ล็อกอินแอป Tailscale บน iPhone ด้วยบัญชีเดียวกัน ตรวจสอบว่าการเชื่อมต่อเปิดอยู่ แล้วออก QR ใหม่ตามขั้นตอนที่ [การออก QR ใหม่](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr) เส้นทางอื่นที่ไม่ใช่ Tailscale (เช่น IP ของ Wi-Fi ที่บ้าน) อาจเริ่มระบบได้ แต่จะติดขัดที่ขั้นตอนจับคู่ (pairing)
 
 </details>
 
 <details>
 <summary>สแกน QR แล้วขึ้นว่า "หมดอายุ"</summary>
 
-QR จะหมดอายุภายใน 10 นาทีหลังแสดงผล กรุณาออกรหัสใหม่ตามขั้นตอนที่ [การออก QR ใหม่](docs/engineering.md#reissue-qr)
+QR จะหมดอายุภายใน 10 นาทีหลังแสดงผล กรุณาออกรหัสใหม่ตามขั้นตอนที่ [การออก QR ใหม่](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr)
 
 </details>
 
@@ -304,11 +312,11 @@ QR จะหมดอายุภายใน 10 นาทีหลังแส�
 
 | สิ่งที่อยากรู้ | หน้าเอกสาร |
 |---|---|
-| กลไกการทำงาน รายการคำสั่งทั้งหมด การดูแลบริการ การถอนการติดตั้ง | [เอกสารสำหรับวิศวกร](docs/engineering.md) |
-| อาร์กิวเมนต์ของทุกคำสั่ง / ตำแหน่งจัดเก็บ / กติกาการจับคู่ (pairing) | [ข้อกำหนดโดยละเอียด](docs/reference.md) |
-| ตารางตัวแปรสภาพแวดล้อมทั้งหมด (สร้างอัตโนมัติ) | [docs/env.md](docs/env.md) |
-| ฟีเจอร์ใดส่งข้อมูลอะไรออกไปภายนอก | [docs/privacy.md](docs/privacy.md) |
-| ข้อกำหนดการสื่อสารของการจับคู่ (pairing) | [docs/contracts/pairing-v1.md](docs/contracts/pairing-v1.md) |
+| กลไกการทำงาน รายการคำสั่งทั้งหมด การดูแลบริการ การถอนการติดตั้ง | [เอกสารสำหรับวิศวกร](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md) |
+| อาร์กิวเมนต์ของทุกคำสั่ง / ตำแหน่งจัดเก็บ / กติกาการจับคู่ (pairing) | [ข้อกำหนดโดยละเอียด](https://github.com/caty-ai/caty-gateway/blob/main/docs/reference.md) |
+| ตารางตัวแปรสภาพแวดล้อมทั้งหมด (สร้างอัตโนมัติ) | [docs/env.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/env.md) |
+| ฟีเจอร์ใดส่งข้อมูลอะไรออกไปภายนอก | [docs/privacy.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/privacy.md) |
+| ข้อกำหนดการสื่อสารของการจับคู่ (pairing) | [docs/contracts/pairing-v1.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/contracts/pairing-v1.md) |
 
 การเพิ่มหรือแก้ไข backend สามารถทำได้ตามขั้นตอนต่อไปนี้ ยินดีต้อนรับ
 
@@ -320,7 +328,7 @@ QR จะหมดอายุภายใน 10 นาทีหลังแส�
 
 หากต้องการเพิ่ม AI ที่คุณใช้อยู่ ให้เริ่มต้นได้เพียงเขียน preset เพิ่มขึ้นมา 1 ตัว
 
-ขั้นตอน / รูปแบบการทดสอบ / กระบวนการรีวิว ดูได้ที่ [CONTRIBUTING.md](CONTRIBUTING.md) หากพบปัญหาหรือมีคำถาม แจ้งได้ที่ [Issue](https://github.com/caty-ai/caty-gateway/issues)
+ขั้นตอน / รูปแบบการทดสอบ / กระบวนการรีวิว ดูได้ที่ [CONTRIBUTING.md](https://github.com/caty-ai/caty-gateway/blob/main/CONTRIBUTING.md) หากพบปัญหาหรือมีคำถาม แจ้งได้ที่ [Issue](https://github.com/caty-ai/caty-gateway/issues)
 
 ---
 
@@ -328,7 +336,7 @@ QR จะหมดอายุภายใน 10 นาทีหลังแส�
 
 ## สัญญาอนุญาต
 
-เป็น [MIT License](LICENSE) เราเลือกสัญญาอนุญาตนี้เพื่อให้ทุกคนสามารถใช้และนำไปประกอบเข้ากับ AI ของตนเองได้อย่างอิสระ เพื่อสร้างทางเข้าให้ AI ของตัวเองได้ด้วยตัวเอง
+เป็น [MIT License](https://github.com/caty-ai/caty-gateway/blob/main/LICENSE) เราเลือกสัญญาอนุญาตนี้เพื่อให้ทุกคนสามารถใช้และนำไปประกอบเข้ากับ AI ของตนเองได้อย่างอิสระ เพื่อสร้างทางเข้าให้ AI ของตัวเองได้ด้วยตัวเอง
 
 ---
 

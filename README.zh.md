@@ -2,17 +2,17 @@
 
 <div align="center">
 
-[🇺🇸 English](README.md) ｜ [🇯🇵 日本語](README.ja.md) ｜ **🇨🇳 简体中文** ｜ [🇹🇭 ไทย](README.th.md)
+[🇺🇸 English](https://github.com/caty-ai/caty-gateway/blob/main/README.md) ｜ [🇯🇵 日本語](https://github.com/caty-ai/caty-gateway/blob/main/README.ja.md) ｜ [**🇨🇳 简体中文**](https://github.com/caty-ai/caty-gateway/blob/main/README.zh.md) ｜ [🇹🇭 ไทย](https://github.com/caty-ai/caty-gateway/blob/main/README.th.md)
 
-![caty-gateway 的 hero 图。左边是 iPhone（CatyPhone），右边是在电脑里运行的 AI。连接两者的一条线中间有一个小小的门（gateway），这条线只经过一个封闭的私有网络。](assets/readme/hero.png)
+![caty-gateway 的 hero 图。左边是 iPhone（CatyPhone），右边是在电脑里运行的 AI。连接两者的一条线中间有一个小小的门（gateway），这条线只经过一个封闭的私有网络。](https://raw.githubusercontent.com/caty-ai/caty-gateway/main/assets/readme/hero.png)
 
 <h4>一个小巧的常驻程序，让你可以从 iPhone 应用 CatyPhone 用语音，和你电脑上正在运行的 AI 对话。</h4>
 
 [![CI](https://github.com/caty-ai/caty-gateway/actions/workflows/test-lint.yml/badge.svg?event=pull_request)](https://github.com/caty-ai/caty-gateway/actions/workflows/test-lint.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/caty-ai/caty-gateway/blob/main/LICENSE)
 ![python](https://img.shields.io/badge/python-3.10%2B-lightgrey?logo=python&logoColor=white)
 ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
-![PyPI](https://img.shields.io/badge/PyPI-not%20yet-lightgrey)
+[![PyPI](https://img.shields.io/pypi/v/caty-gateway)](https://pypi.org/project/caty-gateway/)
 
 [能做什么](#what) ｜ [需要准备什么](#requirements) ｜ [开始使用](#start) ｜ [为什么放心](#safety) ｜ [遇到问题](#troubleshooting) ｜ [了解更多](#more)
 
@@ -21,7 +21,7 @@
 
 **把平时用的 AI，装进口袋随身带走。**
 
-🔧 [面向工程师的文档](docs/engineering.md) ｜ 📘 [详细规格](docs/reference.md)
+🔧 [面向工程师的文档](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md) ｜ 📘 [详细规格](https://github.com/caty-ai/caty-gateway/blob/main/docs/reference.md)
 
 </div>
 
@@ -39,7 +39,7 @@
 原因很简单：**电脑上的 AI，没有一个能从手机进入的入口**。
 caty-gateway 只负责补上这个入口。
 
-需要说明的是，caty-gateway 是为**在电脑上运行 AI 代理或本地 LLM 的人**准备的工具，需要搭配 iPhone 应用 CatyPhone 一起使用。如果电脑上没有 AI，或者不使用 CatyPhone，就不适用本工具。
+需要说明的是，caty-gateway 是为**在电脑上运行 AI 代理或本地 LLM 的人**准备的工具，需要搭配 iPhone 应用 [CatyPhone](https://caty.talk) 一起使用。如果电脑上没有 AI，或者不使用 CatyPhone，就不适用本工具。
 
 ---
 
@@ -149,6 +149,14 @@ Tailscale 是一款免费应用，用来搭建只连接你自己设备之间的�
 
 **1. 安装**
 
+一键安装脚本会在没有 `uv` 时先安装 `uv`，再安装 caty-gateway。它将**随 PyPI 发布一起提供**（coming with the PyPI release）；在那之前，请使用下面的 `uv` 命令。
+
+```sh
+curl -fsSL https://caty.talk/gateway/install.sh | sh
+```
+
+如果已经有 `uv`：
+
 ```sh
 uv tool install caty-gateway
 ```
@@ -191,7 +199,7 @@ caty-gateway setup --member me --backend claude
 
 **4. 扫描二维码**
 
-打开 CatyPhone，扫描显示出来的二维码。这样 iPhone 和电脑就连接上了，可以开始用语音对话。二维码 10 分钟后会失效，扫过一次也就不能再用。想重新显示，请执行 `caty-gateway qr --member <id>`（步骤见 [重新生成二维码](docs/engineering.md#reissue-qr)）。
+打开 CatyPhone，扫描显示出来的二维码。这样 iPhone 和电脑就连接上了，可以开始用语音对话。二维码 10 分钟后会失效，扫过一次也就不能再用。想重新显示，请执行 `caty-gateway qr --member <id>`（步骤见 [重新生成二维码](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr)）。
 
 <details>
 <summary>遇到问题时（提示 command not found、没有 uv 或 pipx、Python 版本太旧）</summary>
@@ -234,12 +242,12 @@ caty-gateway 只负责「入口」这一件事，不会对 AI 或对话做任何
 
   对话记录存放在 `~/.local/state/caty-gateway/history/<名字>/`，删除该文件夹即可清除
 
-gateway 只会把对话发送给你选定的 AI。除此之外，只有在你**自己主动开启语音朗读、头像生成等可选功能时**才会有内容发送到外部。哪些功能会发送什么内容，写在[隐私说明](docs/privacy.md)里。
+gateway 只会把对话发送给你选定的 AI。除此之外，只有在你**自己主动开启语音朗读、头像生成等可选功能时**才会有内容发送到外部。哪些功能会发送什么内容，写在[隐私说明](https://github.com/caty-ai/caty-gateway/blob/main/docs/privacy.md)里。
 
 <details>
 <summary>想要卸载时（彻底删除的步骤）</summary>
 
-1. 停止并移除常驻服务（macOS 是 `~/Library/LaunchAgents/ai.caty.gateway.<名字>.plist`，Linux 是 `caty-gateway-<名字>.service`）。具体步骤见[面向工程师的文档](docs/engineering.md#uninstall)
+1. 停止并移除常驻服务（macOS 是 `~/Library/LaunchAgents/ai.caty.gateway.<名字>.plist`，Linux 是 `caty-gateway-<名字>.service`）。具体步骤见[面向工程师的文档](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#uninstall)
 2. 删除配置和记录文件夹：`~/.config/caty-gateway/`、`~/.local/state/caty-gateway/`、`~/.local/share/caty-gateway/`
 3. 卸载本体：`uv tool uninstall caty-gateway`（使用 pipx 的话是 `pipx uninstall caty-gateway`）
 
@@ -281,14 +289,14 @@ gateway 不会在 AI 那一侧创建任何东西。对话会作为该 AI 自己�
 <details>
 <summary>已经启动了，但扫描二维码也连接不上</summary>
 
-多数情况是 iPhone 和电脑不在同一个 Tailscale 网络中。在 iPhone 的 Tailscale 应用里登录同一个账号，确认连接已开启，然后按 [重新生成二维码](docs/engineering.md#reissue-qr) 的步骤重新显示二维码。如果走的是 Tailscale 以外的路径（比如家中 Wi-Fi 的 IP），即使能启动，也会在配对阶段卡住。
+多数情况是 iPhone 和电脑不在同一个 Tailscale 网络中。在 iPhone 的 Tailscale 应用里登录同一个账号，确认连接已开启，然后按 [重新生成二维码](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr) 的步骤重新显示二维码。如果走的是 Tailscale 以外的路径（比如家中 Wi-Fi 的 IP），即使能启动，也会在配对阶段卡住。
 
 </details>
 
 <details>
 <summary>扫描二维码后提示「已过期」</summary>
 
-二维码从显示起 10 分钟后就会失效。请按 [重新生成二维码](docs/engineering.md#reissue-qr) 的步骤重新生成。
+二维码从显示起 10 分钟后就会失效。请按 [重新生成二维码](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr) 的步骤重新生成。
 
 </details>
 
@@ -304,11 +312,11 @@ gateway 不会在 AI 那一侧创建任何东西。对话会作为该 AI 自己�
 
 | 想了解的内容 | 页面 |
 |---|---|
-| 工作机制、命令一览、服务运维、卸载方法 | [面向工程师的文档](docs/engineering.md) |
-| 全部命令的参数、保存位置、配对规则 | [详细规格](docs/reference.md) |
-| 环境变量完整表（自动生成） | [docs/env.md](docs/env.md) |
-| 哪些功能会向外部发送什么内容 | [docs/privacy.md](docs/privacy.md) |
-| 配对通信规格 | [docs/contracts/pairing-v1.md](docs/contracts/pairing-v1.md) |
+| 工作机制、命令一览、服务运维、卸载方法 | [面向工程师的文档](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md) |
+| 全部命令的参数、保存位置、配对规则 | [详细规格](https://github.com/caty-ai/caty-gateway/blob/main/docs/reference.md) |
+| 环境变量完整表（自动生成） | [docs/env.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/env.md) |
+| 哪些功能会向外部发送什么内容 | [docs/privacy.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/privacy.md) |
+| 配对通信规格 | [docs/contracts/pairing-v1.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/contracts/pairing-v1.md) |
 
 欢迎按照以下步骤添加或修改 backend。
 
@@ -320,7 +328,7 @@ gateway 不会在 AI 那一侧创建任何东西。对话会作为该 AI 自己�
 
 要加入自己正在使用的 AI，只需添加一个预设配置即可开始。
 
-具体步骤、测试规范、审核流程，见 [CONTRIBUTING.md](CONTRIBUTING.md)。有 bug 或疑问，请前往 [Issue](https://github.com/caty-ai/caty-gateway/issues)。
+具体步骤、测试规范、审核流程，见 [CONTRIBUTING.md](https://github.com/caty-ai/caty-gateway/blob/main/CONTRIBUTING.md)。有 bug 或疑问，请前往 [Issue](https://github.com/caty-ai/caty-gateway/issues)。
 
 ---
 
@@ -328,7 +336,7 @@ gateway 不会在 AI 那一侧创建任何东西。对话会作为该 AI 自己�
 
 ## 许可协议
 
-采用 [MIT License](LICENSE)。为了让每个人都能自由使用并集成，自己为自己的 AI 装上入口，我们选择了这一许可协议。
+采用 [MIT License](https://github.com/caty-ai/caty-gateway/blob/main/LICENSE)。为了让每个人都能自由使用并集成，自己为自己的 AI 装上入口，我们选择了这一许可协议。
 
 ---
 
