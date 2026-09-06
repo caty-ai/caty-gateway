@@ -2,17 +2,17 @@
 
 <div align="center">
 
-[🇺🇸 English](README.md) ｜ **🇯🇵 日本語** ｜ [🇨🇳 简体中文](README.zh.md) ｜ [🇹🇭 ไทย](README.th.md)
+[🇺🇸 English](https://github.com/caty-ai/caty-gateway/blob/main/README.md) ｜ [**🇯🇵 日本語**](https://github.com/caty-ai/caty-gateway/blob/main/README.ja.md) ｜ [🇨🇳 简体中文](https://github.com/caty-ai/caty-gateway/blob/main/README.zh.md) ｜ [🇹🇭 ไทย](https://github.com/caty-ai/caty-gateway/blob/main/README.th.md)
 
-![caty-gateway の hero 画像。左に iPhone（CatyPhone）、右にパソコンの中で動く AI。2 つを結ぶ 1 本の線の途中に小さな門（gateway）があり、線は閉じた私設ネットワークの中だけを通っている。](assets/readme/hero.png)
+![caty-gateway の hero 画像。左に iPhone（CatyPhone）、右にパソコンの中で動く AI。2 つを結ぶ 1 本の線の途中に小さな門（gateway）があり、線は閉じた私設ネットワークの中だけを通っている。](https://raw.githubusercontent.com/caty-ai/caty-gateway/main/assets/readme/hero.png)
 
 <h4>あなたのパソコンで動いている AI と、iPhone アプリ CatyPhone から声で話せるようにする、小さな常駐プログラムです。</h4>
 
 [![CI](https://github.com/caty-ai/caty-gateway/actions/workflows/test-lint.yml/badge.svg?event=pull_request)](https://github.com/caty-ai/caty-gateway/actions/workflows/test-lint.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/caty-ai/caty-gateway/blob/main/LICENSE)
 ![python](https://img.shields.io/badge/python-3.10%2B-lightgrey?logo=python&logoColor=white)
 ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
-![PyPI](https://img.shields.io/badge/PyPI-not%20yet-lightgrey)
+[![PyPI](https://img.shields.io/pypi/v/caty-gateway)](https://pypi.org/project/caty-gateway/)
 
 [できること](#what) ｜ [必要なもの](#requirements) ｜ [使いはじめる](#start) ｜ [安心の理由](#safety) ｜ [困ったとき](#troubleshooting) ｜ [もっと詳しく](#more)
 
@@ -21,7 +21,7 @@
 
 **いつもの AI を、ポケットに連れて出る。**
 
-🔧 [エンジニア向けドキュメント](docs/engineering.md) ｜ 📘 [詳細仕様](docs/reference.md)
+🔧 [エンジニア向けドキュメント](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md) ｜ 📘 [詳細仕様](https://github.com/caty-ai/caty-gateway/blob/main/docs/reference.md)
 
 </div>
 
@@ -39,7 +39,7 @@
 共通する原因はシンプルで、**パソコンの AI に、スマホから届く入口がない**ことです。
 caty-gateway は、その入口だけを引き受けます。
 
-なお caty-gateway は、**パソコンで AI エージェントかローカル LLM を動かしている人**のためのツールです。iPhone アプリ CatyPhone と組で使います。パソコン側に AI がない場合や、CatyPhone を使わない場合は対象外になります。
+なお caty-gateway は、**パソコンで AI エージェントかローカル LLM を動かしている人**のためのツールです。iPhone アプリ [CatyPhone](https://caty.talk) と組で使います。パソコン側に AI がない場合や、CatyPhone を使わない場合は対象外になります。
 
 ---
 
@@ -149,6 +149,14 @@ https://github.com/caty-ai/caty-gateway を読んで、caty-gateway を入れて
 
 **1. 入れる**
 
+ワンコマンドのインストーラーは、`uv` が無ければ用意してから caty-gateway を入れます。**PyPI 公開と同時に提供予定**（coming with the PyPI release）で、それまでは下の `uv` のコマンドを使ってください。
+
+```sh
+curl -fsSL https://caty.talk/gateway/install.sh | sh
+```
+
+`uv` がすでにある場合:
+
 ```sh
 uv tool install caty-gateway
 ```
@@ -191,7 +199,7 @@ caty-gateway setup --member me --backend claude
 
 **4. QR を読む**
 
-CatyPhone を開き、表示された QR コードを読み取ります。iPhone とパソコンがつながり、話しかけられるようになります。QR は 10 分で期限が切れ、一度読むと使えなくなります。もう一度出すには `caty-gateway qr --member <id>` を実行します（手順は [QR の再発行](docs/engineering.md#reissue-qr)）。
+CatyPhone を開き、表示された QR コードを読み取ります。iPhone とパソコンがつながり、話しかけられるようになります。QR は 10 分で期限が切れ、一度読むと使えなくなります。もう一度出すには `caty-gateway qr --member <id>` を実行します（手順は [QR の再発行](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr)）。
 
 <details>
 <summary>つまずいたとき（command not found・uv や pipx が無い・Python が古い）</summary>
@@ -234,12 +242,12 @@ caty-gateway は「入口」だけを担当し、AI にも会話にも余計な�
 
   会話の記録は `~/.local/state/caty-gateway/history/<名前>/` に置かれ、フォルダを消せば消えます
 
-gateway が会話を送る先は、あなたが選んだ AI だけです。それ以外に外部へ送られるものは、音声の読み上げやアバター生成などの**任意機能を自分で有効にしたときだけ**です。どの機能が何を送るかは [プライバシー](docs/privacy.md) に書いてあります。
+gateway が会話を送る先は、あなたが選んだ AI だけです。それ以外に外部へ送られるものは、音声の読み上げやアバター生成などの**任意機能を自分で有効にしたときだけ**です。どの機能が何を送るかは [プライバシー](https://github.com/caty-ai/caty-gateway/blob/main/docs/privacy.md) に書いてあります。
 
 <details>
 <summary>やめたいとき（丸ごと消す手順）</summary>
 
-1. 常駐サービスを止めて外す（macOS は `~/Library/LaunchAgents/ai.caty.gateway.<名前>.plist`、Linux は `caty-gateway-<名前>.service`）。手順は [エンジニア向けドキュメント](docs/engineering.md#uninstall) にあります
+1. 常駐サービスを止めて外す（macOS は `~/Library/LaunchAgents/ai.caty.gateway.<名前>.plist`、Linux は `caty-gateway-<名前>.service`）。手順は [エンジニア向けドキュメント](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#uninstall) にあります
 2. 設定と記録のフォルダを消す: `~/.config/caty-gateway/`、`~/.local/state/caty-gateway/`、`~/.local/share/caty-gateway/`
 3. 本体を消す: `uv tool uninstall caty-gateway`（pipx なら `pipx uninstall caty-gateway`）
 
@@ -281,14 +289,14 @@ gateway が AI 側に作ったものはありません。会話は AI 自身の�
 <details>
 <summary>起動はしたのに、QR を読んでもつながらない</summary>
 
-iPhone がパソコンと同じ Tailscale ネットワークにいないことがほとんどです。iPhone の Tailscale アプリで同じアカウントにログインし、接続がオンになっていることを確認して、[QR の再発行](docs/engineering.md#reissue-qr) の手順で新しい QR を出し直します。Tailscale 以外の経路（家の Wi-Fi の IP など）では、起動はできてもペアリングで止まります。
+iPhone がパソコンと同じ Tailscale ネットワークにいないことがほとんどです。iPhone の Tailscale アプリで同じアカウントにログインし、接続がオンになっていることを確認して、[QR の再発行](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr) の手順で新しい QR を出し直します。Tailscale 以外の経路（家の Wi-Fi の IP など）では、起動はできてもペアリングで止まります。
 
 </details>
 
 <details>
 <summary>QR を読んだら「期限切れ」と出た</summary>
 
-QR は表示から 10 分で切れます。[QR の再発行](docs/engineering.md#reissue-qr) の手順で出し直してください。
+QR は表示から 10 分で切れます。[QR の再発行](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr) の手順で出し直してください。
 
 </details>
 
@@ -304,11 +312,11 @@ QR は表示から 10 分で切れます。[QR の再発行](docs/engineering.md
 
 | 知りたいこと | ページ |
 |---|---|
-| 仕組み・コマンド一覧・サービスの運用・アンインストール | [エンジニア向けドキュメント](docs/engineering.md) |
-| 全コマンドの引数・保存先・ペアリングの決まりごと | [詳細仕様](docs/reference.md) |
-| 環境変数の全表（自動生成） | [docs/env.md](docs/env.md) |
-| どの機能が何を外部に送るか | [docs/privacy.md](docs/privacy.md) |
-| ペアリングの通信仕様 | [docs/contracts/pairing-v1.md](docs/contracts/pairing-v1.md) |
+| 仕組み・コマンド一覧・サービスの運用・アンインストール | [エンジニア向けドキュメント](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md) |
+| 全コマンドの引数・保存先・ペアリングの決まりごと | [詳細仕様](https://github.com/caty-ai/caty-gateway/blob/main/docs/reference.md) |
+| 環境変数の全表（自動生成） | [docs/env.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/env.md) |
+| どの機能が何を外部に送るか | [docs/privacy.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/privacy.md) |
+| ペアリングの通信仕様 | [docs/contracts/pairing-v1.md](https://github.com/caty-ai/caty-gateway/blob/main/docs/contracts/pairing-v1.md) |
 
 backend の追加や修正は、次の手順で歓迎します。
 
@@ -320,7 +328,7 @@ backend の追加や修正は、次の手順で歓迎します。
 
 自分の使っている AI を足すには、プリセットを 1 つ書き足すだけで始められます。
 
-手順・テストの型・レビューの流れは [CONTRIBUTING.md](CONTRIBUTING.md) にあります。不具合や質問は [Issue](https://github.com/caty-ai/caty-gateway/issues) へどうぞ。
+手順・テストの型・レビューの流れは [CONTRIBUTING.md](https://github.com/caty-ai/caty-gateway/blob/main/CONTRIBUTING.md) にあります。不具合や質問は [Issue](https://github.com/caty-ai/caty-gateway/issues) へどうぞ。
 
 ---
 
@@ -328,7 +336,7 @@ backend の追加や修正は、次の手順で歓迎します。
 
 ## ライセンス
 
-[MIT License](LICENSE) です。自分の AI に自分で入口を付けられるように、誰でも自由に使って組み込めるライセンスを選びました。
+[MIT License](https://github.com/caty-ai/caty-gateway/blob/main/LICENSE) です。自分の AI に自分で入口を付けられるように、誰でも自由に使って組み込めるライセンスを選びました。
 
 ---
 

@@ -11,6 +11,7 @@ caty-gateway は、CatyPhone（iOS クライアント）と、ホスト上で動
 前提は `ffmpeg` / `ffprobe`・Tailscale ログイン済み・使う backend の CLI かサーバーの 3 つです。
 
 ```sh
+curl -fsSL https://caty.talk/gateway/install.sh | sh   # ワンコマンド導入（PyPI 公開と同時に提供予定）
 uv tool install caty-gateway            # または pipx install caty-gateway
 caty-gateway doctor --backend claude    # 受動チェックのみ。全 PASS まで直す
 caty-gateway setup --member me --backend claude --plan-only   # 実行予定を確認（何も書かない）
