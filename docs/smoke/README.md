@@ -34,6 +34,15 @@ an existing user's service or history to make it clean. Install with
 The installer URL in Engineering is marked as awaiting the PyPI release; if the
 package is unavailable, record that blocker instead of claiming a clean install.
 
+When the host is driven over `ssh` (no TTY): `setup` asks `Run this plan? [y/N]`
+and exits unless `--yes` is given, and the default QR delivery (`auto`) picks the
+URL mode on a non-TTY, which blocks until the one-shot PNG is fetched or the
+credential expires. Run setup as
+`CATY_QR_DELIVERY=tty caty-gateway setup --member <id> --backend <b> --port N --yes`
+so the ASCII QR is printed and setup returns. Measured on 2026-09-06 (mac-mini
+records in this directory). Also export a `PATH` that contains the backend CLI
+before running setup: the service inherits the PATH of the shell that ran setup.
+
 Run one route at a time, or supply distinct `--port N` values to setup. Replace
 angle-bracket placeholders before executing. Keep backend secrets in a protected
 0600 environment file and load them into the shell before doctor/setup; do not
