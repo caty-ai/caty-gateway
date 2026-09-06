@@ -54,7 +54,7 @@ Authenticate the `claude` CLI first.
 
 ```sh
 caty-gateway doctor --backend claude
-caty-gateway setup --member smoke-claude --backend claude
+CATY_QR_DELIVERY=tty caty-gateway setup --member smoke-claude --backend claude --yes
 ```
 
 ### Codex
@@ -63,7 +63,7 @@ Authenticate the `codex` CLI first.
 
 ```sh
 caty-gateway doctor --backend codex
-caty-gateway setup --member smoke-codex --backend codex
+CATY_QR_DELIVERY=tty caty-gateway setup --member smoke-codex --backend codex --yes
 ```
 
 ### OpenClaw
@@ -72,7 +72,7 @@ Configure the `openclaw` CLI and its agent first.
 
 ```sh
 caty-gateway doctor --backend openclaw
-caty-gateway setup --member smoke-openclaw --backend openclaw
+CATY_QR_DELIVERY=tty caty-gateway setup --member smoke-openclaw --backend openclaw --yes
 ```
 
 ### Hermes
@@ -83,7 +83,7 @@ protected environment file. Set `CATY_HERMES_URL` there if it is not the default
 
 ```sh
 caty-gateway doctor --backend hermes
-caty-gateway setup --member smoke-hermes --backend hermes
+CATY_QR_DELIVERY=tty caty-gateway setup --member smoke-hermes --backend hermes --yes
 ```
 
 ### Ollama via openai-compat
@@ -94,7 +94,7 @@ Start Ollama and select an installed model returned by its `/v1/models` endpoint
 export CATY_OPENAI_BASE_URL=http://127.0.0.1:11434/v1
 export CATY_OPENAI_MODEL='<installed-model-id>'
 caty-gateway doctor --backend openai-compat
-caty-gateway setup --member smoke-ollama --backend openai-compat
+CATY_QR_DELIVERY=tty caty-gateway setup --member smoke-ollama --backend openai-compat --yes
 ```
 
 ### LM Studio via openai-compat
@@ -106,7 +106,7 @@ Use its configured port if it differs from 1234.
 export CATY_OPENAI_BASE_URL=http://127.0.0.1:1234/v1
 export CATY_OPENAI_MODEL='<loaded-model-id>'
 caty-gateway doctor --backend openai-compat
-caty-gateway setup --member smoke-lm-studio --backend openai-compat
+CATY_QR_DELIVERY=tty caty-gateway setup --member smoke-lm-studio --backend openai-compat --yes
 ```
 
 ## Run phone-sim
@@ -174,7 +174,7 @@ codeword. Read `resume_recall` as a recall probe, not proof of all history conte
 `restart.observed: false` means no health outage was seen; it is a warning unless
 `--require-restart-observed` is set. `--no-restart` reports a skipped restart and
 cannot establish restart/resume. No log source means `log_check: "skipped"`;
-`--require-log-check` makes that fatal. Log files and commands are repeatable.
+`--require-log-check` makes that fatal. Log files and commands are repeatable; `--log-timeout` sets each log command's timeout (default: 60 seconds).
 
 The final stdout is one JSON line; progress goes to stderr. Exit 0 means the
 selected checks passed. Save only that redacted summary in the record, never

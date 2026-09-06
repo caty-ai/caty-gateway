@@ -92,7 +92,7 @@ def test_find_leaks_returns_names_only(name):
     credentials["pair_secret"] = credentials["pair"].split(".")[1]
     result = phone_sim.find_leaks("log prefix " + credentials[name], credentials)
     _check(name in result, "expected leak name absent")
-    _check(all(item in credentials for item in result), "leak detector returned a value")
+    _check(all(item in credentials or item == "pair_pattern" for item in result), "leak detector returned a value")
     _check(all(value not in str(result) for value in credentials.values()), "leak detector disclosed secret")
 
 
@@ -100,6 +100,11 @@ def test_find_leaks_allows_public_pair_id():
     credentials = _credentials()
     credentials["pair_secret"] = credentials["pair"].split(".")[1]
     assert phone_sim.find_leaks(credentials["pair"].split(".")[0], credentials) == []
+    assert phone_sim.find_leaks("pid=deadbeef", credentials) == []
+
+
+def test_find_leaks_generic_pair():
+    assert phone_sim.find_leaks("deadbeef." + "cd" * 16, _credentials()) == ["pair_pattern"]
 
 
 class _FakeOpenAI(http.server.BaseHTTPRequestHandler):
@@ -192,6 +197,7 @@ def _running_gateway(tmp_path):
         home = tmp_path / "home"
         home.mkdir()
         env = {key: value for key, value in os.environ.items() if not key.startswith("CATY_")}
+        env["PYTHONPATH"] = str(ROOT / "src") + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
         env.update({
             "HOME": str(home), "CATY_AGENT": "phone-sim-fake", "CATY_ID": "smoke-e2e",
             "CATY_BACKEND": "openai-compat", "CATY_GATEWAY_BIND": "127.0.0.1",
@@ -208,7 +214,9 @@ def _running_gateway(tmp_path):
         deadline = time.monotonic() + 60
         while not _health(port, token):
             if supervisor.poll() is not None or time.monotonic() >= deadline:
-                pytest.fail("gateway did not become ready; inspect the temporary gateway.log locally")
+                log = tmp_path / "gateway.log"
+                tail = "\n".join(log.read_text(errors="replace").splitlines()[-20:]) if log.exists() else "(no gateway.log)"
+                raise AssertionError("gateway did not become ready:\n" + phone_sim.redact(tail, [token]))
             time.sleep(0.05)
         yield envfile, token
     finally:
@@ -366,6 +374,36 @@ def test_main_consumed_claim_is_never_retried(monkeypatch, capsys):
     assert summary["claim"]["http_status"] == 409
     assert gateway.calls.count(("POST", "/pair/claim")) == 1
     assert summary["turns"] == []
+
+
+def test_main_request_error_suppresses_details(monkeypatch, capsys):
+    gateway = _MockGateway()
+    def fail_request(*args, **kwargs):
+        raise ConnectionRefusedError(gateway.credentials["CATY_TOKEN"])
+    monkeypatch.setattr(gateway, "request", fail_request)
+    result, summary, _ = _mock_main(monkeypatch, capsys, gateway, "--no-restart")
+    assert summary["error"] == "operation failed (ConnectionRefusedError; details suppressed)"
+
+
+def test_main_invalid_session_precedes_env_read(monkeypatch, capsys):
+    gateway = _MockGateway()
+    result, summary, _ = _mock_main(monkeypatch, capsys, gateway, "--no-restart", "--session-id", "bad id", "--env-file", "missing.env")
+    assert result == 1
+    assert gateway.calls == []
+    assert summary["stage"] == "qr"
+    assert summary["error"] == "session id must use only letters, digits, dot, underscore or hyphen"
+
+
+@pytest.mark.parametrize("args,timeout", [((), 60), (("--log-timeout", "37"), 37)])
+def test_main_log_command_timeout(monkeypatch, capsys, args, timeout):
+    def run(command, **kwargs):
+        assert command == "read-logs"
+        assert kwargs["timeout"] == timeout
+        return subprocess.CompletedProcess(command, 0, stdout=b"clean logs")
+    monkeypatch.setattr(phone_sim.subprocess, "run", run)
+    result, summary, _ = _mock_main(monkeypatch, capsys, _MockGateway(), "--no-restart", "--log-cmd", "read-logs", *args)
+    assert result == 0
+    assert summary["log_check"] == "pass"
 
 
 def test_main_log_command_leak_is_fatal_and_redacted(monkeypatch, capsys):

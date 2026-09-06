@@ -42,8 +42,11 @@ def redact(text, secrets):
 
 
 def find_leaks(log_text, secrets):
-    """Return only the names of credentials present as plain substrings."""
-    return sorted(name for name, value in secrets.items() if value and value in log_text)
+    """Return only names of known credentials and generic pair patterns."""
+    names = {name for name, value in secrets.items() if value and value in log_text}
+    if PAIR_RE.search(log_text):
+        names.add("pair_pattern")
+    return sorted(names)
 
 
 def parse_env_text(text):
@@ -142,6 +145,7 @@ def make_parser():
     parser.add_argument("--restart-timeout", type=positive_seconds, default=90)
     parser.add_argument("--turn-timeout", type=positive_seconds, default=180)
     parser.add_argument("--claim-timeout", type=positive_seconds, default=15)
+    parser.add_argument("--log-timeout", type=positive_seconds, default=60)
     parser.add_argument("--log-file", action="append", default=[], metavar="PATH")
     parser.add_argument("--log-cmd", action="append", default=[], metavar="CMD")
     parser.add_argument("--session-id", default="smoke-" + time.strftime("%Y%m%d", time.gmtime()) + "-" + secrets.token_hex(3))
@@ -300,6 +304,10 @@ def main(argv):
 
     try:
         args = make_parser().parse_args(argv)
+        if not args.restart_cmd and not args.no_restart:
+            raise SmokeFailure("--restart-cmd or --no-restart is required")
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", args.session_id):
+            raise SmokeFailure("session id must use only letters, digits, dot, underscore or hyphen")
         stage("qr")
         if args.qr_json:
             raw = sys.stdin.read() if args.qr_json == "-" else read_text(args.qr_json)
@@ -315,9 +323,6 @@ def main(argv):
             if not admin_token:
                 raise SmokeFailure("env file requires member token")
             url = validate_url(env.get("CATY_PUBLIC_URL"))
-            # Validate operational arguments before issuing a new credential.
-            if not args.restart_cmd and not args.no_restart:
-                raise SmokeFailure("--restart-cmd or --no-restart is required")
             status, _, raw = request(url, "POST", "/pair/new", token=admin_token,
                                      body=b"", timeout=args.claim_timeout)
             if status != 200:
@@ -332,10 +337,6 @@ def main(argv):
         summary.update(label=args.label, session_id=args.session_id,
                        pair_id=payload["pair"].split(".")[0], member_id=payload["id"],
                        gateway_url=urllib.parse.urlsplit(payload["url"]).netloc)
-        if not args.restart_cmd and not args.no_restart:
-            raise SmokeFailure("--restart-cmd or --no-restart is required")
-        if not re.fullmatch(r"[A-Za-z0-9._-]+", args.session_id):
-            raise SmokeFailure("session id must use only letters, digits, dot, underscore or hyphen")
         stage("claim")
         started = time.monotonic()
         try:
@@ -388,7 +389,7 @@ def main(argv):
                         summary.update(log_check="leak", log_secret_leak=True)
                         raise SmokeFailure("secret detected in logs (content suppressed)")
                 for command in args.log_cmd:
-                    if find_leaks(run_command(command, args.claim_timeout), known):
+                    if find_leaks(run_command(command, args.log_timeout), known):
                         summary.update(log_check="leak", log_secret_leak=True)
                         raise SmokeFailure("secret detected in logs (content suppressed)")
             except Exception:
@@ -405,7 +406,7 @@ def main(argv):
         # Library exceptions may include request headers, file contents, or
         # subprocess output, including credentials not learned yet.
         summary["error"] = (redact(str(error), known) if isinstance(error, SmokeFailure)
-                            else "operation failed (details suppressed)")
+                            else "operation failed (%s; details suppressed)" % type(error).__name__)
     summary["finished_at"] = utc_now()
     print(json.dumps(sanitize_summary(summary, known), ensure_ascii=False, separators=(",", ":"), sort_keys=True))
     return 0 if summary["ok"] else 1
