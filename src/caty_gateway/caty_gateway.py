@@ -2786,7 +2786,7 @@ def _bind_qr_delivery_server(handler, addresses):
     last_error = None
     for address in addresses:
         try:
-            return HTTPServer((address, 0), handler)
+            return _QRDeliveryHTTPServer((address, 0), handler)
         except OSError as error:
             last_error = error
     raise OSError(
@@ -5782,12 +5782,11 @@ def lan_ip():
         s.close()
 
 
-class _GatewayHTTPServer(ThreadingHTTPServer):
-    """ThreadingHTTPServer whose bind skips reverse-DNS lookup (#19).
+class _NoReverseDNSBindMixin:
+    """Bind without reverse DNS lookup (#19, #23).
 
-    HTTPServer resolves the bind address's FQDN after binding; on hosts without
-    fast reverse DNS that blocks for tens of seconds, and the gateway never
-    reads the resolved name. Bind and set the two server attributes directly.
+    ``server_name`` is the bind address, not an FQDN; nothing in this module
+    reads it.
     """
 
     def server_bind(self):
@@ -5795,6 +5794,19 @@ class _GatewayHTTPServer(ThreadingHTTPServer):
         host, port = self.server_address[:2]
         self.server_name = host
         self.server_port = port
+
+
+class _GatewayHTTPServer(_NoReverseDNSBindMixin, ThreadingHTTPServer):
+    """ThreadingHTTPServer whose bind skips reverse-DNS lookup (#19).
+
+    HTTPServer resolves the bind address's FQDN after binding; on hosts without
+    fast reverse DNS that blocks for tens of seconds, and the gateway never
+    reads the resolved name. Bind and set the two server attributes directly.
+    """
+
+
+class _QRDeliveryHTTPServer(_NoReverseDNSBindMixin, HTTPServer):
+    """Single-threaded QR delivery server whose bind skips reverse DNS."""
 
 
 def main(argv=None):
