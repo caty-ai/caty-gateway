@@ -197,6 +197,8 @@ caty-gateway setup --member me --backend claude
 
 `me` の部分は、あなたを表す英数字の短い名前に置き換えます（そのまま `me` でも構いません）。パソコンが起動するたびに動く常駐サービスが作られ、最後に QR コードが表示されます。先に中身だけ見たいときは `--plan-only` を付けると、何も書き換えずに実行予定が一覧で出ます。
 
+ssh 越しやスクリプトから実行するときは、確認に答える端末が無いので `--yes` を付け、QR をテキストで描くために先頭に `CATY_QR_DELIVERY=tty` を置きます: `CATY_QR_DELIVERY=tty caty-gateway setup --member me --backend claude --yes`
+
 **4. QR を読む**
 
 CatyPhone を開き、表示された QR コードを読み取ります。iPhone とパソコンがつながり、話しかけられるようになります。QR は 10 分で期限が切れ、一度読むと使えなくなります。もう一度出すには `caty-gateway qr --member <id>` を実行します（手順は [QR の再発行](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr)）。

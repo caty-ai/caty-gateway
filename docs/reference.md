@@ -29,7 +29,8 @@ caty-gateway setup --member MEMBER [--backend BACKEND] [--port PORT] [--name NAM
 | `--port` | Listening port (default 8788). preflight FAILs if it is in use |
 | `--name` `--accent` | Display name and accent color returned by `/identity` |
 | `--public-url` | Destination URL shown in the QR. If omitted, generated from the Tailscale IPv4 |
-| `--qr-delivery` | `tty` (render in the terminal) / `url` (show a delivery URL) / `auto` |
+| `--qr-delivery` | `tty` (render in the terminal) / `url` (show a delivery URL) / `auto` (`tty` when stdout is a terminal, otherwise `url`). Over ssh or in a script use `tty` (or `CATY_QR_DELIVERY=tty`); `url` blocks until the one-shot PNG is fetched or its credential expires |
+| `--yes` | Accept the plan without the `Run this plan? [y/N]` prompt. Required when stdin is not a terminal (ssh, scripts); without it `setup` exits with `stdin is not interactive; rerun with --yes to accept the plan` |
 | `--plan-only` | Display the plan and the list of planned actions, then exit. Changes no files, service, or state |
 | `--no-history` | Do not set `CATY_HISTORY_DIR` (no history is kept) |
 | `--reset` | Discard only the resume metadata |
