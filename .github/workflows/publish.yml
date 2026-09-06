@@ -4,6 +4,7 @@
 # with owner=caty-ai, repository=caty-gateway, workflow=publish.yml, environment=pypi (issue #9),
 # and the `pypi` GitHub environment protected by required reviewers + tag-only deployment branches.
 # No API token is stored anywhere; the `pypi` environment is the gate.
+# Runbook: docs/engineering.md "Publishing a release" (dispatch on the tag: --ref vX.Y.Z).
 name: Publish to PyPI
 
 on:
@@ -36,6 +37,15 @@ jobs:
             echo "::error::version '$REQUESTED_VERSION' is not a plain SemVer-style version (fail-closed)"
             exit 1
           fi
+      - name: Require dispatch on the release tag (--ref vX.Y.Z)
+        # The pypi environment only deploys from tag: v*; without --ref the run starts on main and the
+        # publish job is rejected after a successful build. Fail closed here instead (docs/engineering.md).
+        if: ${{ github.ref != format('refs/tags/v{0}', github.event.inputs.version) }}
+        env:
+          REQUESTED_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          echo "::error::dispatched on '$GITHUB_REF', not on refs/tags/v$REQUESTED_VERSION; re-run with: gh workflow run publish.yml --repo caty-ai/caty-gateway --ref v$REQUESTED_VERSION -f version=$REQUESTED_VERSION (fail-closed)"
+          exit 1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/tags/v${{ github.event.inputs.version }}
