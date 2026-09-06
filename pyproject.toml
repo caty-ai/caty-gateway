@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.0"]  # pinned for reproducible metadata (issue #26); bump deliberately, package-check.yml + publish.yml verify it
 build-backend = "hatchling.build"
 
 [project]
