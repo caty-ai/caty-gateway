@@ -1930,7 +1930,7 @@ class SetupOrchestrator:
             "completed_phases": list(self.state.completed_phases),
             "timeline_entry": "setup run started",
             "clear_fields": (
-                "qr_url",
+                "message", "qr_url",
                 "expires_at",
                 "recovery_pointer",
                 "resume_output",
@@ -1993,7 +1993,7 @@ class SetupOrchestrator:
             terminal=True,
             phase="complete",
             completed_phases=list(PHASES),
-            timeline_entry="setup completed",
+            message="setup completed", timeline_entry="setup completed",
             clear_fields=("qr_url", "expires_at", "recovery_pointer", *OWNER_FIELDS),
         )
         effective_qr_delivery = self.qr_delivery

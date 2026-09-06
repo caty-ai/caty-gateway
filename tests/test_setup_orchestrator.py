@@ -2624,6 +2624,42 @@ def test_orchestrator_owner_fields_clear_on_normal_completion(fake_home, tmp_pat
     assert all(field not in payload for field in setup_orchestrator.OWNER_FIELDS)
 
 
+def test_orchestrator_success_replaces_previous_failure_detail(fake_home, tmp_path, monkeypatch, capsys):
+    failed_orch = _make_orch(
+        fake_home, tmp_path, monkeypatch, "--public-url", "http://100.64.0.1:8788",
+    )
+    failure_message = "stdin is not interactive; rerun with --yes to accept the plan"
+    failed_orch._update_status(
+        state="failed",
+        active=False,
+        terminal=True,
+        message=failure_message,
+        timeline_entry="setup failed",
+    )
+    assert failed_orch._read_status()["message"] == failure_message
+
+    orch = _make_orch(
+        fake_home, tmp_path, monkeypatch, "--yes", "--public-url", "http://100.64.0.1:8788",
+    )
+    assert orch.status_path == failed_orch.status_path
+    orch._preflight = lambda: setattr(orch, "config", orch._resolved_config())
+    orch._backend = lambda: True
+    orch._install = lambda: None
+    orch._start = lambda: None
+    orch._linger = lambda: None
+    orch._health = lambda: None
+    orch._identity = lambda: None
+    orch._qr = lambda: None
+
+    assert orch.run() == 0
+    assert orch._read_status()["state"] == "succeeded"
+    capsys.readouterr()
+    orch._print_status(orch._read_status())
+    output = capsys.readouterr().out
+    assert not any(line.startswith("Detail: stdin is not interactive") for line in output.splitlines())
+    assert "Detail: setup completed" in output
+
+
 @pytest.mark.parametrize(
     ("raised", "expected_state"),
     [
