@@ -1,5 +1,6 @@
 import json
 import os
+import signal
 import stat
 import subprocess
 import sys
@@ -80,10 +81,9 @@ class ScriptedStream:
 
 
 class FakeProcess:
-    _next_pid = 1000
-
     def __init__(self, stdout_events=(), stderr_events=(), returncode=0):
         self.returncode = returncode
+        # Only tests with mocked process-group signaling should assign a PID.
         self.pid = None
         self.terminated = False
         self.killed = False
@@ -91,8 +91,6 @@ class FakeProcess:
         self._done = threading.Event()
         self._open_streams = 2
         self._lock = threading.Lock()
-        FakeProcess._next_pid += 1
-        self.pid = FakeProcess._next_pid
         self.stdout = ScriptedStream(stdout_events, on_finish=self._stream_finished)
         self.stderr = ScriptedStream(stderr_events, on_finish=self._stream_finished)
 
@@ -311,11 +309,33 @@ class ClaudeCodeBackendTest(unittest.TestCase):
         backend = self.backend()
         proc = FakeProcess(stdout_events=[(1.0, json.dumps({"ignored": True}) + "\n")], stderr_events=[(1.0, "")], returncode=0)
 
-        with mock.patch.object(backend, "_spawn_stream_once", return_value=proc):
+        def killpg(pid, sig):
+            self.assertEqual(pid, proc.pid)
+            {signal.SIGTERM: proc.terminate, signal.SIGKILL: proc.kill}[sig]()
+
+        with mock.patch("caty_gateway.backends.claude.os.killpg", side_effect=killpg) as killpg_mock, \
+                mock.patch.object(backend, "_spawn_stream_once", return_value=proc):
+            proc.pid = 2**22 + 1
             with self.assertRaises(ClaudeStreamTimeout):
                 list(backend.openai_stream("hi", "meetmate:user", 0))
 
+        killpg_mock.assert_called_once_with(proc.pid, signal.SIGTERM)
         self.assertTrue(proc.terminated or proc.killed)
+
+    def test_terminate_stream_process_without_pid_uses_fallback(self):
+        backend = self.backend()
+        proc = FakeProcess()
+        self.assertIsNone(proc.pid)
+
+        with mock.patch.object(proc, "poll", return_value=None), \
+                mock.patch("caty_gateway.backends.claude.os.killpg") as killpg_mock, \
+                mock.patch("caty_gateway.backends.claude.os.kill") as kill_mock:
+            backend._terminate_stream_process(proc)
+
+        self.assertTrue(proc.terminated)
+        self.assertFalse(proc.killed)
+        killpg_mock.assert_not_called()
+        kill_mock.assert_not_called()
 
     def test_openai_stream_close_terminates_running_process(self):
         backend = self.backend()
@@ -334,11 +354,18 @@ class ClaudeCodeBackendTest(unittest.TestCase):
             returncode=0,
         )
 
-        with mock.patch.object(backend, "_spawn_stream_once", return_value=proc):
+        def killpg(pid, sig):
+            self.assertEqual(pid, proc.pid)
+            {signal.SIGTERM: proc.terminate, signal.SIGKILL: proc.kill}[sig]()
+
+        with mock.patch("caty_gateway.backends.claude.os.killpg", side_effect=killpg) as killpg_mock, \
+                mock.patch.object(backend, "_spawn_stream_once", return_value=proc):
+            proc.pid = 2**22 + 1
             gen = backend.openai_stream("hi", "meetmate:user", 5)
             self.assertEqual(next(gen), "first")
             gen.close()
 
+        killpg_mock.assert_called_once_with(proc.pid, signal.SIGTERM)
         self.assertTrue(proc.terminated or proc.killed)
 
     def test_openai_stream_raises_for_empty_success(self):
