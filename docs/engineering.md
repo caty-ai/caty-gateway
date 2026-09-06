@@ -20,7 +20,7 @@ caty-gateway setup --member me --backend claude               # install service 
 
 `setup` proceeds in this order: preflight → conflict detection → service install → wait for `/health` → verify `/identity` authentication → check voice status → show QR. If it stops partway, run `caty-gateway status --member me` to see where it is; re-running the same command resumes from that point.
 
-Over ssh or from a script (any non-interactive stdin), `setup` cannot ask `Run this plan? [y/N]` and exits with `stdin is not interactive; rerun with --yes to accept the plan`. Pass `--yes` to accept the plan, and set `CATY_QR_DELIVERY=tty` so the final QR is drawn as text: with the default `auto`, a non-TTY falls back to the URL mode, which blocks until the one-shot PNG is fetched or its credential expires.
+Over ssh or from a script (any non-interactive stdin), `setup` cannot ask `Run this plan? [y/N]` and exits with `stdin is not interactive; rerun with --yes to accept the plan`. Pass `--yes` to accept the plan, and set `CATY_QR_DELIVERY=tty` so the final QR is drawn as text. With the default `auto`, a stdout that is not a terminal falls back to the URL mode, which blocks until the one-shot PNG is fetched or its credential expires.
 
 ```sh
 CATY_QR_DELIVERY=tty caty-gateway setup --member <id> --backend <b> --yes
