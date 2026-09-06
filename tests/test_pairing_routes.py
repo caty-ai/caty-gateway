@@ -142,7 +142,7 @@ class PairingRoutesTest(unittest.TestCase):
         fake_server = mock.Mock()
         fake_server.serve_forever.return_value = None
         with mock.patch.object(cg.sys, "argv", ["caty_gateway.py"]), \
-                mock.patch.object(cg, "ThreadingHTTPServer", return_value=fake_server), \
+                mock.patch.object(cg, "_GatewayHTTPServer", return_value=fake_server), \
                 mock.patch.object(cg, "report_content_logging_mode"), \
                 mock.patch.object(cg, "load_fillers"), \
                 redirect_stdout(io.StringIO()):
@@ -158,7 +158,7 @@ class PairingRoutesTest(unittest.TestCase):
         fake_server = mock.Mock()
         fake_server.serve_forever.return_value = None
         with mock.patch.object(cg.sys, "argv", ["caty_gateway.py"]), \
-                mock.patch.object(cg, "ThreadingHTTPServer", return_value=fake_server), \
+                mock.patch.object(cg, "_GatewayHTTPServer", return_value=fake_server), \
                 mock.patch.object(cg, "report_content_logging_mode"), \
                 mock.patch.object(cg, "load_fillers"), \
                 mock.patch.dict(os.environ, {"CATY_REQUIRE_AUTH": "0", "CATY_GATEWAY_BIND": "127.0.0.1"}), \
@@ -194,7 +194,7 @@ class PairingRoutesTest(unittest.TestCase):
         fake_server = mock.Mock()
         fake_server.serve_forever.return_value = None
         with mock.patch.object(cg.sys, "argv", ["caty_gateway.py"]), \
-                mock.patch.object(cg, "ThreadingHTTPServer", return_value=fake_server), \
+                mock.patch.object(cg, "_GatewayHTTPServer", return_value=fake_server), \
                 mock.patch.object(cg, "report_content_logging_mode"), \
                 mock.patch.object(cg, "load_fillers"), \
                 mock.patch.dict(os.environ, {"CATY_GATEWAY_BIND": "127.0.0.1"}), \
@@ -509,7 +509,7 @@ class PairingRoutesTest(unittest.TestCase):
         broken = ps.PairingUnavailable("cannot initialize pairing store root")
         with mock.patch.object(cg.sys, "argv", ["caty_gateway.py"]), \
                 mock.patch.object(cg, "_get_pairing_store", side_effect=broken), \
-                mock.patch.object(cg, "ThreadingHTTPServer", return_value=fake_server), \
+                mock.patch.object(cg, "_GatewayHTTPServer", return_value=fake_server), \
                 mock.patch.object(cg, "report_content_logging_mode"), \
                 mock.patch.object(cg, "load_fillers"), \
                 redirect_stdout(io.StringIO()) as stdout:

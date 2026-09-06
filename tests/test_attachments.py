@@ -357,7 +357,7 @@ class AttachmentMechanismTest(unittest.TestCase):
             cg.share_store, "cleanup_claimed_orphans",
             side_effect=lambda _root: events.append("cleanup"),
         ), mock.patch.object(cg, "_get_neutral_voice_readiness", return_value=Readiness()), mock.patch.object(
-            cg, "ThreadingHTTPServer", Server
+            cg, "_GatewayHTTPServer", Server
         ), mock.patch.object(cg, "load_fillers"), mock.patch.object(
             cg, "report_content_logging_mode"
         ), mock.patch.object(cg, "_pairing_token_configured", return_value=True), mock.patch.object(

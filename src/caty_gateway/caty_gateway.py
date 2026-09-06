@@ -53,6 +53,7 @@ import secrets
 import shutil
 import signal
 import socket
+import socketserver
 import stat
 import subprocess
 import sys
@@ -5781,6 +5782,21 @@ def lan_ip():
         s.close()
 
 
+class _GatewayHTTPServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer whose bind skips reverse-DNS lookup (#19).
+
+    HTTPServer resolves the bind address's FQDN after binding; on hosts without
+    fast reverse DNS that blocks for tens of seconds, and the gateway never
+    reads the resolved name. Bind and set the two server attributes directly.
+    """
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name = host
+        self.server_port = port
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] not in ("serve", "qr"):
@@ -5846,7 +5862,7 @@ def main(argv=None):
         # it.  §6-2 already routes store unavailability to 503 pairing_disabled,
         # which the handlers do on their own once this stays non-fatal.
         log(f"WARN pairing store unavailable, pairing disabled: {error}")
-    srv = ThreadingHTTPServer((bind_host, PORT), Handler)
+    srv = _GatewayHTTPServer((bind_host, PORT), Handler)
     print("=" * 56)
     print("  Caty gateway")
     print(f"  agent = {AGENT}   STT言語 = {LANG}")

@@ -85,7 +85,7 @@ class RequireAuthTest(unittest.TestCase):
             for token in ("", " \t "):
                 os.environ["CATY_GATEWAY_BIND"] = host
                 cg.CATY_TOKEN = token
-                with mock.patch.object(cg, "ThreadingHTTPServer") as server, \
+                with mock.patch.object(cg, "_GatewayHTTPServer") as server, \
                         mock.patch.object(cg, "load_fillers") as fillers, \
                         mock.patch.object(cg, "_get_pairing_config") as pairing:
                     with self.assertRaises(SystemExit) as result:
@@ -99,7 +99,7 @@ class RequireAuthTest(unittest.TestCase):
         for host in ("127.0.0.1", "::1", "localhost"):
             os.environ["CATY_GATEWAY_BIND"] = host
             with ExitStack() as stack:
-                server = stack.enter_context(mock.patch.object(cg, "ThreadingHTTPServer"))
+                server = stack.enter_context(mock.patch.object(cg, "_GatewayHTTPServer"))
                 stack.enter_context(mock.patch.object(cg, "load_fillers"))
                 stack.enter_context(mock.patch.object(cg, "report_content_logging_mode"))
                 stack.enter_context(mock.patch.object(cg, "_get_pairing_store"))
