@@ -1,0 +1,28 @@
+# Build the sdist + wheel on every PR and run `twine check --strict`, so packaging-metadata drift
+# (e.g. a new hatchling writing a Metadata-Version the pinned twine rejects, issue #9) is caught
+# here instead of in the owner-only publish run.
+# The `build` / `twine` pins MUST equal the ones in publish.yml ("Build sdist and wheel, then check them").
+name: Package Check
+on:
+  pull_request:
+permissions: {contents: read}
+concurrency: {group: 'package-check-${{ github.event.pull_request.number }}', cancel-in-progress: true}
+jobs:
+  package-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Build sdist and wheel, then twine check --strict
+        run: |
+          set -euo pipefail
+          python3 -m pip install -q 'build==1.2.2.post1' 'twine==7.0.0'   # same pins as publish.yml
+          python3 -m build
+          ls -l dist
+          python3 -m twine check --strict dist/*

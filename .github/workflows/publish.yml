@@ -92,7 +92,7 @@ jobs:
           REQUESTED_VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
-          python3 -m pip install -q 'build==1.2.2.post1' 'twine==7.0.0'
+          python3 -m pip install -q 'build==1.2.2.post1' 'twine==7.0.0'   # same pins as package-check.yml (PR-time check)
           python3 -m build
           ls -l dist
           python3 -m twine check --strict dist/*
