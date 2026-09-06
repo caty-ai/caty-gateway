@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test lint env-check scrub gate build
+.PHONY: test lint env-check scrub gate build smoke-a
 
 test:
 	@tmp=$$(mktemp) || exit 2; trap 'rm -f "$$tmp"' 0; \
@@ -29,3 +29,6 @@ gate:
 
 build:
 	uv build
+
+smoke-a:
+	$(PYTHON) -B tools/smoke/phone-sim.py $(SMOKE_ARGS)
