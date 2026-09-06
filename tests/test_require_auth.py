@@ -85,7 +85,7 @@ class RequireAuthTest(unittest.TestCase):
             for token in ("", " \t "):
                 os.environ["CATY_GATEWAY_BIND"] = host
                 cg.CATY_TOKEN = token
-                with mock.patch.object(cg, "_GatewayHTTPServer") as server, \
+                with mock.patch.object(cg, "_GatewayHTTPServer", side_effect=AssertionError("server must not be constructed")) as server, \
                         mock.patch.object(cg, "load_fillers") as fillers, \
                         mock.patch.object(cg, "_get_pairing_config") as pairing:
                     with self.assertRaises(SystemExit) as result:
