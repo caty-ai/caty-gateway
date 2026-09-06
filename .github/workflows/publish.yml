@@ -40,6 +40,7 @@ jobs:
       - name: Require dispatch on the release tag (--ref vX.Y.Z)
         # The pypi environment only deploys from tag: v*; without --ref the run starts on main and the
         # publish job is rejected after a successful build. Fail closed here instead (docs/engineering.md).
+        # Keep this step after "Validate version syntax": the echo below relies on REQUESTED_VERSION being charset-checked.
         if: ${{ github.ref != format('refs/tags/v{0}', github.event.inputs.version) }}
         env:
           REQUESTED_VERSION: ${{ github.event.inputs.version }}
