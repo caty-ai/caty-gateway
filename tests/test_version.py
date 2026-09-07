@@ -49,8 +49,20 @@ def test_version_fallback_when_dist_missing(monkeypatch):
     assert caty_gateway.__version__ == _pyproject_version()
 
 
+def test_version_fallback_when_metadata_is_empty(monkeypatch):
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(importlib.metadata, "version", lambda distribution_name: None)
+            importlib.reload(caty_gateway)
+            assert caty_gateway.__version__ == "0+unknown"
+    finally:
+        importlib.reload(caty_gateway)
+    assert caty_gateway.__version__ == _pyproject_version()
+
+
 def test_no_hardcoded_version_outside_pyproject():
     matches = []
+    literal_assignments = []
     for directory in (ROOT / "src", ROOT / "tools"):
         for path in sorted(directory.rglob("*")):
             if not path.is_file():
@@ -65,4 +77,13 @@ def test_no_hardcoded_version_outside_pyproject():
             for line_number, line in enumerate(text.splitlines(), 1):
                 if re.search(r"0\.1\.", line):
                     matches.append(f"{path.relative_to(ROOT)}:{line_number}:{line}")
-    assert not matches, "Hardcoded version strings found:\n" + "\n".join(matches)
+                if re.search(r"__version__\s*=\s*[\"']\d+\.\d+", line):
+                    literal_assignments.append(
+                        f"{path.relative_to(ROOT)}:{line_number}:{line}"
+                    )
+    assert not matches and not literal_assignments, (
+        "Hardcoded version strings found:\n"
+        + "\n".join(matches)
+        + "\nLiteral version assignments found:\n"
+        + "\n".join(literal_assignments)
+    )
