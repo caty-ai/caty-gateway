@@ -1213,7 +1213,7 @@ class SetupOrchestrator:
         if self.system == "Linux":
             unit = self.home / ".config" / "systemd" / "user" / self.service_name
             if unit.exists() and not self._systemd_unit_matches_expected(unit):
-                raise SetupError("refusing to overwrite a foreign service unit: %s" % unit)
+                raise SetupError("refusing to overwrite a foreign service unit: %s — move it aside and re-run setup" % unit)
             # systemd EnvironmentFile double quotes preserve whitespace, $, and #.
             def quote(value):
                 return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`").replace("$", "\\$") + '"'
@@ -1252,6 +1252,11 @@ class SetupOrchestrator:
 
     def _start(self) -> None:
         if self.system == "Linux":
+            unit = self.home / ".config" / "systemd" / "user" / self.service_name
+            expected = self._expected_systemd_unit()
+            if self._owned_artifact() and (not unit.exists() or unit.read_bytes() != expected):
+                self._write_private(unit, expected)
+                print("Re-rendered the service unit for this member (previous install wrote a stale unit).")
             for command in (
                 ["systemctl", "--user", "daemon-reload"],
                 ["systemctl", "--user", "enable", "--now", self.service_name],

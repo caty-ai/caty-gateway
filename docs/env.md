@@ -81,12 +81,12 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | CATY_REQUIRE_AUTH | False | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:1355 |
 | CATY_SESSION_KEY_PREFIX | 'caty-' | B | public | member env (0600) | src/caty_gateway/caty_gateway.py:159 |
 | CATY_SETUP_BACKEND_RECOVERY_TIMEOUT_SECONDS | '120' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:955 |
-| CATY_SETUP_DEBUG | None (unset) | C | public | process-only | src/caty_gateway/setup_orchestrator.py:2104 |
-| CATY_SETUP_HANDOFF_GRACE_SECONDS | '5' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1659 |
-| CATY_SETUP_QR_TIMEOUT_SECONDS | '3700' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1426 |
+| CATY_SETUP_DEBUG | None (unset) | C | public | process-only | src/caty_gateway/setup_orchestrator.py:2109 |
+| CATY_SETUP_HANDOFF_GRACE_SECONDS | '5' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1664 |
+| CATY_SETUP_QR_TIMEOUT_SECONDS | '3700' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1431 |
 | CATY_SETUP_RESUME_TTL_SECONDS | None (unset) | D | public | process-only | src/caty_gateway/setup_orchestrator.py:130 |
-| CATY_SETUP_STATUS_WAIT_SECONDS | '600' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1801 |
-| CATY_SETUP_SUPERVISED | None (unset) | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1089; src/caty_gateway/setup_orchestrator.py:1586; src/caty_gateway/setup_orchestrator.py:1690; src/caty_gateway/setup_orchestrator.py:1854; src/caty_gateway/setup_orchestrator.py:1906; src/caty_gateway/setup_orchestrator.py:2035 |
+| CATY_SETUP_STATUS_WAIT_SECONDS | '600' | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1806 |
+| CATY_SETUP_SUPERVISED | None (unset) | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1089; src/caty_gateway/setup_orchestrator.py:1591; src/caty_gateway/setup_orchestrator.py:1695; src/caty_gateway/setup_orchestrator.py:1859; src/caty_gateway/setup_orchestrator.py:1911; src/caty_gateway/setup_orchestrator.py:2040 |
 | CATY_SHARE_DIR | '' | A | local | member env (0600) | src/caty_gateway/share_store.py:126 |
 | CATY_STREAM_TTS | ''; None (unset) | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:1385; src/caty_gateway/caty_gateway.py:163 |
 | CATY_TOKEN | '' | A | secret | member env (0600) | src/caty_gateway/caty_gateway.py:184; src/caty_gateway/caty_gateway.py:4936; src/caty_gateway/cli.py:95 |

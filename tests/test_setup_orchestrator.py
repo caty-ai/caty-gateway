@@ -639,6 +639,63 @@ def test_systemd_unit_path_directives_are_unquoted_absolute(tmp_path, monkeypatc
         assert value.replace("%%", "%") == str(expected)
 
 
+@pytest.mark.parametrize("missing_unit", [False, True], ids=["stale", "missing"])
+def test_start_rerenders_stale_owned_unit(fake_home, tmp_path, monkeypatch, capsys, missing_unit):
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, extra_env={"PYTHON": sys.executable})
+    orch._start_state()
+    orch._install()
+    assert orch._owned_artifact()
+    unit = orch.home / ".config" / "systemd" / "user" / orch.service_name
+    expected = orch._expected_systemd_unit()
+    legacy = expected.decode().replace(
+        "WorkingDirectory=" + str(orch.home), 'WorkingDirectory="' + str(orch.home) + '"'
+    ).replace(
+        "EnvironmentFile=" + str(orch.artifact_path),
+        'EnvironmentFile="' + str(orch.artifact_path) + '"',
+    ).encode()
+    assert legacy != expected
+    unit.write_bytes(legacy)
+    if missing_unit:
+        unit.unlink()
+    commands = []
+
+    def run(args):
+        assert unit.read_bytes() == expected
+        commands.append(args)
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(orch, "_run", run)
+    orch._start()
+    assert unit.read_bytes() == orch._expected_systemd_unit()
+    assert commands == [
+        ["systemctl", "--user", "daemon-reload"],
+        ["systemctl", "--user", "enable", "--now", orch.service_name],
+    ]
+    assert "Re-rendered the service unit for this member (previous install wrote a stale unit)." in capsys.readouterr().out
+
+
+def test_start_leaves_unowned_unit_alone(fake_home, tmp_path, monkeypatch, capsys):
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, extra_env={"PYTHON": sys.executable})
+    orch._start_state()
+    orch._install()
+    orch.artifact_path.write_text("CATY_TOKEN=foreign-token\n", encoding="utf-8")
+    assert not orch._owned_artifact()
+    unit = orch.home / ".config" / "systemd" / "user" / orch.service_name
+    expected = orch._expected_systemd_unit()
+    legacy = expected.decode().replace(
+        "WorkingDirectory=" + str(orch.home), 'WorkingDirectory="' + str(orch.home) + '"'
+    ).replace(
+        "EnvironmentFile=" + str(orch.artifact_path),
+        'EnvironmentFile="' + str(orch.artifact_path) + '"',
+    ).encode()
+    assert legacy != expected
+    unit.write_bytes(legacy)
+    monkeypatch.setattr(orch, "_run", lambda args: subprocess.CompletedProcess(args, 0, "", ""))
+    orch._start()
+    assert unit.read_bytes() == legacy
+    assert "Re-rendered the service unit" not in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("home_name", ["home", "fake home %x"])
 def test_systemd_unit_parses_as_valid_unit(tmp_path, monkeypatch, home_name):
     monkeypatch.setattr(setup_orchestrator.platform, "system", lambda: "Linux")
