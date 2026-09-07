@@ -537,14 +537,16 @@ class SetupOrchestrator:
     def _expected_systemd_unit(self) -> bytes:
         template = resources.files("caty_gateway").joinpath("templates", "systemd.service").read_text(encoding="utf-8")
         template = template.replace("%i", self.member)
-        # Quote each path for systemd's syntax; escape literal specifiers as well.
+        # Command lines and environment assignments strip quotes; path directives do not.
         def quoted(value):
             return '"' + str(value).replace("%", "%%").replace("\\", "\\\\").replace('"', '\\"') + '"'
-        rendered = template.replace("WorkingDirectory=__WORKDIR__", "WorkingDirectory=" + quoted(self.home))
+        def unit_path(value):
+            return str(value).replace("%", "%%")
+        rendered = template.replace("WorkingDirectory=__WORKDIR__", 'WorkingDirectory=' + unit_path(self.home))
         rendered = rendered.replace("__PYTHON__", quoted(self.service_python))
         rendered = rendered.replace("Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin",
                                     "Environment=" + quoted("PATH=" + str(self.home) + "/.local/bin:/usr/local/bin:/usr/bin:/bin"))
-        rendered = rendered.replace("EnvironmentFile=%h/.config/caty-gateway/" + self.member + ".env", "EnvironmentFile=" + quoted(self.artifact_path))
+        rendered = rendered.replace("EnvironmentFile=%h/.config/caty-gateway/" + self.member + ".env", 'EnvironmentFile=' + unit_path(self.artifact_path))
         return (rendered.rstrip("\n") + "\n").encode("utf-8")
 
     def _systemd_unit_matches_expected(self, unit: pathlib.Path) -> bool:
@@ -597,6 +599,14 @@ class SetupOrchestrator:
             failures.extend(check.name + ": " + check.hint for check in doctor.checks if check.status == "FAIL")
         self.public_url = doctor.public_url
         if self.system == "Linux":
+            for label, path in (("home", self.home), ("environment file", self.artifact_path)):
+                value = str(path)
+                if (any(char in value for char in ("\n", "\r", "\0"))
+                        or value != value.strip() or value.endswith("\\")):
+                    failures.append(
+                        "%s path cannot be written into a systemd unit "
+                        "(newline / leading-trailing whitespace / trailing backslash): %s" % (label, value)
+                    )
             systemctl = self._command_path("systemctl")
             loginctl = self._command_path("loginctl")
             if not systemctl:
@@ -1203,7 +1213,7 @@ class SetupOrchestrator:
         if self.system == "Linux":
             unit = self.home / ".config" / "systemd" / "user" / self.service_name
             if unit.exists() and not self._systemd_unit_matches_expected(unit):
-                raise SetupError("refusing to overwrite a foreign service unit: %s" % unit)
+                raise SetupError("refusing to overwrite a foreign service unit: %s — move it aside and re-run setup" % unit)
             # systemd EnvironmentFile double quotes preserve whitespace, $, and #.
             def quote(value):
                 return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`").replace("$", "\\$") + '"'
@@ -1242,6 +1252,11 @@ class SetupOrchestrator:
 
     def _start(self) -> None:
         if self.system == "Linux":
+            unit = self.home / ".config" / "systemd" / "user" / self.service_name
+            expected = self._expected_systemd_unit()
+            if self._owned_artifact() and (not unit.exists() or unit.read_bytes() != expected):
+                self._write_private(unit, expected)
+                print("Re-rendered the service unit for this member (previous install wrote a stale unit).")
             for command in (
                 ["systemctl", "--user", "daemon-reload"],
                 ["systemctl", "--user", "enable", "--now", self.service_name],

@@ -8,6 +8,7 @@ import pathlib
 import plistlib
 import re
 import signal
+import shutil
 import subprocess
 import sys
 import threading
@@ -621,6 +622,138 @@ def test_digest_window_unit_requires_exact_installer_render(fake_home, tmp_path,
     collision = orch._member_collision()
     assert collision is not None
     assert "member unit already exists" in collision
+
+
+@pytest.mark.parametrize("home_name", ["home", "fake home %x", 'fake \\home & "quoted" %i'])
+def test_systemd_unit_path_directives_are_unquoted_absolute(tmp_path, monkeypatch, home_name):
+    monkeypatch.setattr(setup_orchestrator.platform, "system", lambda: "Linux")
+    orch = setup_orchestrator.SetupOrchestrator(
+        ["--member", "fake-member"], env={"HOME": str(tmp_path / home_name)}
+    )
+    lines = orch._expected_systemd_unit().decode().splitlines()
+    assert not any(line.startswith('WorkingDirectory="') for line in lines)
+    assert not any(line.startswith('EnvironmentFile="') for line in lines)
+    for key, expected in (("WorkingDirectory", orch.home), ("EnvironmentFile", orch.artifact_path)):
+        value = next(line.split("=", 1)[1] for line in lines if line.startswith(key + "="))
+        assert os.path.isabs(value.replace("%%", "%"))
+        assert value.replace("%%", "%") == str(expected)
+
+
+@pytest.mark.parametrize("missing_unit", [False, True], ids=["stale", "missing"])
+def test_start_rerenders_stale_owned_unit(fake_home, tmp_path, monkeypatch, capsys, missing_unit):
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, extra_env={"PYTHON": sys.executable})
+    orch._start_state()
+    orch._install()
+    assert orch._owned_artifact()
+    unit = orch.home / ".config" / "systemd" / "user" / orch.service_name
+    expected = orch._expected_systemd_unit()
+    legacy = expected.decode().replace(
+        "WorkingDirectory=" + str(orch.home), 'WorkingDirectory="' + str(orch.home) + '"'
+    ).replace(
+        "EnvironmentFile=" + str(orch.artifact_path),
+        'EnvironmentFile="' + str(orch.artifact_path) + '"',
+    ).encode()
+    assert legacy != expected
+    unit.write_bytes(legacy)
+    if missing_unit:
+        unit.unlink()
+    commands = []
+
+    def run(args):
+        assert unit.read_bytes() == expected
+        commands.append(args)
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(orch, "_run", run)
+    orch._start()
+    assert unit.read_bytes() == orch._expected_systemd_unit()
+    assert commands == [
+        ["systemctl", "--user", "daemon-reload"],
+        ["systemctl", "--user", "enable", "--now", orch.service_name],
+    ]
+    assert "Re-rendered the service unit for this member (previous install wrote a stale unit)." in capsys.readouterr().out
+
+
+def test_start_leaves_unowned_unit_alone(fake_home, tmp_path, monkeypatch, capsys):
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, extra_env={"PYTHON": sys.executable})
+    orch._start_state()
+    orch._install()
+    orch.artifact_path.write_text("CATY_TOKEN=foreign-token\n", encoding="utf-8")
+    assert not orch._owned_artifact()
+    unit = orch.home / ".config" / "systemd" / "user" / orch.service_name
+    expected = orch._expected_systemd_unit()
+    legacy = expected.decode().replace(
+        "WorkingDirectory=" + str(orch.home), 'WorkingDirectory="' + str(orch.home) + '"'
+    ).replace(
+        "EnvironmentFile=" + str(orch.artifact_path),
+        'EnvironmentFile="' + str(orch.artifact_path) + '"',
+    ).encode()
+    assert legacy != expected
+    unit.write_bytes(legacy)
+    monkeypatch.setattr(orch, "_run", lambda args: subprocess.CompletedProcess(args, 0, "", ""))
+    orch._start()
+    assert unit.read_bytes() == legacy
+    assert "Re-rendered the service unit" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("home_name", ["home", "fake home %x"])
+def test_systemd_unit_parses_as_valid_unit(tmp_path, monkeypatch, home_name):
+    monkeypatch.setattr(setup_orchestrator.platform, "system", lambda: "Linux")
+    orch = setup_orchestrator.SetupOrchestrator(
+        ["--member", "fake-member"],
+        env={"HOME": str(tmp_path / home_name), "PYTHON": sys.executable},
+    )
+    orch._render_service("fake-token")
+    unit = orch.home / ".config/systemd/user" / orch.service_name
+    assert orch.artifact_path.is_file()
+    sections = {}
+    section = None
+    for line in unit.read_text().splitlines():
+        if line.startswith("[") and line.endswith("]"):
+            section = sections.setdefault(line[1:-1], {})
+        elif section is not None and "=" in line and not line.startswith(("#", ";")):
+            key, value = line.split("=", 1)
+            section[key] = value
+    service = sections["Service"]
+    for key, expected in (("WorkingDirectory", orch.home), ("EnvironmentFile", orch.artifact_path)):
+        value = service[key]
+        assert not value.startswith('"') and not value.endswith('"')
+        assert not value.startswith("-")
+        assert os.path.isabs(value.replace("%%", "%"))
+        assert "%" not in value.replace("%%", "")
+        assert value.replace("%%", "%") == str(expected)
+    assert service["ExecStart"].startswith('"' + sys.executable)
+    assert sections["Install"]["WantedBy"] == "default.target"
+
+    analyzer = shutil.which("systemd-analyze")
+    if analyzer is not None:
+        result = subprocess.run(
+            [analyzer, "--user", "--man=no", "verify", str(unit)], capture_output=True, text=True
+        )
+        if "unrecognized option" in result.stderr:
+            result = subprocess.run(
+                [analyzer, "--man=no", "verify", str(unit)], capture_output=True, text=True
+            )
+        assert result.returncode == 0, result.stderr
+        assert "path is not absolute" not in result.stderr
+        assert "Unit configuration has fatal error" not in result.stderr
+
+
+@pytest.mark.parametrize("attribute,label", [("home", "home"), ("artifact_path", "environment file")])
+@pytest.mark.parametrize("path", ["/tmp/fake\nhome", "/tmp/fake\rhome", "/tmp/fake\0home",
+                                  " /tmp/fake home", "/tmp/fake home ", "/tmp/fake home\t", "/tmp/fake home\\"])
+def test_preflight_rejects_unrepresentable_home_path(
+    fake_home, tmp_path, monkeypatch, capsys, attribute, label, path
+):
+    orch = _make_orch(fake_home, tmp_path, monkeypatch, "--plan-only", "--yes",
+                      "--public-url", "http://100.64.0.1:8788")
+    monkeypatch.setattr(orch, attribute, pathlib.Path(path))
+    with pytest.raises(setup_orchestrator.SetupError, match="preflight failed"):
+        orch._preflight()
+    assert (
+        "FAIL: %s path cannot be written into a systemd unit "
+        "(newline / leading-trailing whitespace / trailing backslash): %s" % (label, path)
+    ) in capsys.readouterr().err
 
 
 def test_installer_env_forces_member_language_not_shell_locale(fake_home, tmp_path, monkeypatch):
