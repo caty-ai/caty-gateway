@@ -162,11 +162,15 @@ python3 -B tools/smoke/phone-sim.py \
 On Linux, `systemctl --user restart` completes in tens of milliseconds while
 the SSH round trip takes hundreds, so `restart.observed: false` with
 `downtime_s: 0.0` is expected. Phone-sim then records proof in
-`restart.proven_by`: `"connection-drop"` means a TCP connection held open across
-the restart was closed by the old process's exit; `"instance-marker"` uses a
-gateway instance marker when exposed; `"health-gap"` means an outage was seen,
-optionally inside the `--restart-grace` window (default: 5 seconds). In the
-record, write the journal `Stopping` → `Started` pair and the MainPID change
+`restart.proven_by`: `"connection-drop"` means an idle TCP connection held open across
+the restart window broke (on a direct `http://` connection this is the old process
+closing its sockets on exit; the sentinel is not used for `https://`);
+`"instance-marker"` uses a gateway instance marker when exposed;
+`"health-gap"` means an outage was seen,
+optionally inside the `--restart-grace` window (default: 5 seconds).
+A single failed probe is not counted as an outage unless the connection was
+refused or a second consecutive probe also fails. In the record, write the
+journal `Stopping` → `Started` pair and the MainPID change
 next to `proven_by`.
 
 The restart commands and log locations above match

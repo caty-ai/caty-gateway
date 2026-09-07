@@ -318,8 +318,10 @@ class _MockGateway:
         if path == "/health":
             status = next(self.health, 200)
             self.health_body = next(self.health_bodies, self.health_body)
-            if status is None:
+            if status == "refused":
                 raise ConnectionRefusedError("simulated downtime")
+            if status is None:
+                raise OSError("simulated timeout")
             return status, {}, self.health_body
         if path == "/talk2":
             _check(method == "POST" and body == b"", "text turn must have empty body")
@@ -476,6 +478,98 @@ def test_main_restart_observation(monkeypatch, capsys, health, require, expected
     if expected_result:
         assert summary["log_check"] == "skipped"
         assert summary["stages"][-2:] == ["turn3", "logcheck"]
+
+
+@pytest.mark.parametrize("health", [(200, 503, 200), (200, 503, 200, 503, 200)])
+def test_single_transient_health_failure_is_not_an_outage(monkeypatch, capsys, health):
+    monkeypatch.setattr(phone_sim, "run_command", lambda *args: "")
+    result, summary, _ = _mock_main(monkeypatch, capsys, _MockGateway(health=health),
+                                   "--restart-cmd", "restart", "--require-restart-observed",
+                                   sentinel=_Sentinel(socket.timeout()))
+    assert result == 1
+    assert summary["restart"]["observed"] is False
+    assert summary["restart"]["proven_by"] is None
+    assert summary["restart"]["downtime_s"] == 0.0
+    assert summary["warnings"].count("one transient health failure during the restart window was ignored") == 1
+
+
+def test_refused_connection_is_a_definitive_outage(monkeypatch, capsys):
+    monkeypatch.setattr(phone_sim, "run_command", lambda *args: "")
+    result, summary, _ = _mock_main(monkeypatch, capsys, _MockGateway(health=(200, "refused", 200)),
+                                   "--restart-cmd", "restart", "--require-restart-observed",
+                                   sentinel=_Sentinel(socket.timeout()))
+    assert result == 0
+    assert summary["restart"]["observed"] is True
+    assert summary["restart"]["proven_by"] == "health-gap"
+    assert summary["restart"]["downtime_s"] > 0
+
+
+def test_two_consecutive_failures_confirm_an_outage(monkeypatch, capsys):
+    monkeypatch.setattr(phone_sim, "run_command", lambda *args: "")
+    result, summary, _ = _mock_main(monkeypatch, capsys, _MockGateway(health=(200, 503, None, 200)),
+                                   "--restart-cmd", "restart", "--require-restart-observed",
+                                   sentinel=_Sentinel(socket.timeout()))
+    assert result == 0
+    assert summary["restart"]["observed"] is True
+    assert summary["restart"]["proven_by"] == "health-gap"
+    assert summary["restart"]["downtime_s"] > 0
+
+
+def test_gateway_never_recovers_reports_recovery_failure(monkeypatch, capsys):
+    monkeypatch.setattr(phone_sim, "run_command", lambda *args: "")
+    gateway = _MockGateway(health=itertools.chain((200, "refused"), itertools.repeat(503)))
+    result, summary, _ = _mock_main(monkeypatch, capsys, gateway,
+                                   "--restart-cmd", "restart", "--restart-timeout", "6",
+                                   "--restart-grace", "0.25")
+    assert result == 1
+    assert summary["restart"]["observed"] is True
+    assert summary["error"] == "gateway did not recover after restart"
+    assert summary["stage"] == "restart"
+
+
+def test_required_restart_without_deferred_raises(monkeypatch):
+    args = phone_sim.make_parser().parse_args([
+        "--env-file", "unused", "--restart-cmd", "restart", "--require-restart-observed"])
+    gateway = _MockGateway()
+    summary = phone_sim.build_summary()
+    sentinel = _Sentinel(socket.timeout())
+    monkeypatch.setattr(phone_sim, "request", gateway.request)
+    monkeypatch.setattr(phone_sim, "run_command", lambda *args: "")
+    monkeypatch.setattr(phone_sim, "open_sentinel", lambda *args: sentinel)
+    monkeypatch.setattr(phone_sim.threading, "Thread", _ImmediateThread)
+    monkeypatch.setattr(phone_sim.time, "sleep", lambda seconds: None)
+    ticks = itertools.count(step=0.25)
+    monkeypatch.setattr(phone_sim.time, "monotonic", lambda: next(ticks))
+    with pytest.raises(phone_sim.SmokeFailure, match="^restart was not observed or proven$"):
+        phone_sim.do_restart(args, gateway.payload, gateway.credentials["token"], summary)
+    assert summary["restart"]["proven_by"] is None
+    assert sentinel.closed
+
+
+def test_restart_post_loop_checks_can_cross_deadline(monkeypatch, capsys):
+    class SlowSentinel(_Sentinel):
+        def recv(self, size):
+            ticks = itertools.count(start=10000, step=0.25)
+            monkeypatch.setattr(phone_sim.time, "monotonic", lambda: next(ticks))
+            return super().recv(size)
+
+    gateway = _MockGateway(health=(200, "refused", 200))
+    request = gateway.request
+    health_timeouts = []
+
+    def track_request(*args, **kwargs):
+        if args[2] == "/health":
+            health_timeouts.append(kwargs["timeout"])
+        return request(*args, **kwargs)
+
+    monkeypatch.setattr(gateway, "request", track_request)
+    monkeypatch.setattr(phone_sim, "run_command", lambda *args: "")
+    result, summary, _ = _mock_main(monkeypatch, capsys, gateway,
+                                   "--restart-cmd", "restart", "--require-restart-observed",
+                                   sentinel=SlowSentinel())
+    assert result == 0
+    assert summary["restart"]["proven_by"] == "health-gap"
+    assert health_timeouts[-1] == 0.2
 
 
 def test_main_argparse_error_suppresses_unknown_secrets(capsys):
@@ -675,7 +769,27 @@ def test_restart_timeout_closes_sentinel(monkeypatch, capsys):
                                    sentinel=sentinel)
     assert result == 1
     assert summary["stage"] == "restart"
+    assert summary["error"] == "gateway did not recover after restart"
+    assert sentinel.closed
+
+
+def test_restart_deadline_while_command_running_reports_timeout(monkeypatch, capsys):
+    class RunningThread(_ImmediateThread):
+        def start(self):
+            pass
+
+        def is_alive(self):
+            return True
+
+    sentinel = _Sentinel()
+    result, summary, _ = _mock_main(monkeypatch, capsys,
+                                   _MockGateway(health=itertools.chain((200,), itertools.repeat("refused"))),
+                                   "--restart-cmd", "restart", "--restart-timeout", "6",
+                                   sentinel=sentinel, thread_type=RunningThread)
+    assert result == 1
+    assert summary["restart"]["observed"] is True
     assert summary["error"] == "restart timed out"
+    assert summary["stage"] == "restart"
     assert sentinel.closed
 
 
@@ -701,22 +815,24 @@ def test_restart_probes_while_real_command_thread_runs(monkeypatch):
 
     def command(*args):
         command_threads.append(threading.get_ident())
-        if not probing.wait(0.1):
-            raise phone_sim.SmokeFailure("concurrent probe missing")
+        assert probing.wait(5), "restart command did not receive a concurrent health probe within 5 s"
         completed.set()
 
     def request(*args, **kwargs):
         calls.append(1)
         if len(calls) > 1:
             probing.set()
-            assert completed.wait(0.1)
+            assert completed.wait(5), "restart command did not complete after the concurrent health probe within 5 s"
         return 200, {}, b"{}"
 
     sentinel = _Sentinel()
     monkeypatch.setattr(phone_sim, "run_command", command)
     monkeypatch.setattr(phone_sim, "request", request)
     monkeypatch.setattr(phone_sim, "open_sentinel", lambda *args: sentinel)
-    monkeypatch.setattr(phone_sim.time, "sleep", lambda seconds: completed.wait(0.001))
+    def wait_for_command(seconds):
+        assert completed.wait(5), "restart command did not complete before the next probe within 5 s"
+
+    monkeypatch.setattr(phone_sim.time, "sleep", wait_for_command)
     phone_sim.do_restart(args, _payload(), "unused", summary)
     assert command_threads and command_threads[0] != main_thread
     assert summary["restart"]["observed"] is False

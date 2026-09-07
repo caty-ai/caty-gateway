@@ -329,39 +329,56 @@ def do_restart(args, payload, token, summary, *, deferred=None):
             command_finished = time.monotonic()
 
     down_since = None
+    transient_warning = "one transient health failure during the restart window was ignored"
+
+    def probe_budget():
+        try:
+            return budget()
+        except SmokeFailure:
+            if result["observed"] and not thread.is_alive():
+                raise SmokeFailure("gateway did not recover after restart") from None
+            raise
+
     try:
         thread = threading.Thread(target=restart, daemon=True)
         thread.start()
         while True:
-            budget()
+            probe_budget()
             running = thread.is_alive()
             if not running and command_errors:
                 break
             probe_started = time.monotonic()
             try:
                 status, _, _ = request(payload["url"], "GET", "/health", token=token,
-                                       timeout=min(0.5, budget()))
+                                       timeout=min(0.5, probe_budget()))
+            except ConnectionRefusedError:
+                status = "refused"
             except (OSError, http.client.HTTPException):
                 status = None
-            budget()
+            probe_budget()
             if status == 200:
+                if down_since is not None and not result["observed"]:
+                    down_since = None
+                    if transient_warning not in summary["warnings"]:
+                        summary["warnings"].append(transient_warning)
                 result["downtime_s"] = round(time.monotonic() - down_since, 3) if down_since is not None else 0.0
                 if not running and (result["observed"] or
                                     time.monotonic() >= command_finished + args.restart_grace):
                     break
             else:
-                result["observed"] = True
+                if status == "refused" or down_since is not None:
+                    result["observed"] = True
                 if down_since is None:
                     down_since = probe_started
-                result["downtime_s"] = round(time.monotonic() - down_since, 3)
-            time.sleep(min(0.5, budget()))
+                if result["observed"]:
+                    result["downtime_s"] = round(time.monotonic() - down_since, 3)
+            time.sleep(min(0.5, probe_budget()))
         if command_errors:
             raise command_errors[0]
-        budget()
         result["sentinel_dropped"] = sentinel_dropped(sentinel)
         sentinel = None  # The helper owns closure once checked.
-        marker_after = probe_marker(payload["url"], token, min(2.0, budget()))
-        budget()
+        left = max(0.2, deadline - time.monotonic())
+        marker_after = probe_marker(payload["url"], token, min(2.0, left))
         if marker_before is not None and marker_after is not None:
             result["marker_changed"] = marker_before != marker_after
         if result["observed"]:
@@ -377,8 +394,9 @@ def do_restart(args, payload, token, summary, *, deferred=None):
                 "restart not observed; health was already 200 after command")
             if args.require_restart_observed and result["proven_by"] is None:
                 failure = SmokeFailure("restart was not observed or proven")
-                if deferred is not None:
-                    deferred.append(failure)
+                if deferred is None:
+                    raise failure
+                deferred.append(failure)
     finally:
         if sentinel is not None:
             sentinel.close()
