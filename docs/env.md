@@ -89,7 +89,7 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | CATY_SETUP_SUPERVISED | None (unset) | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1089; src/caty_gateway/setup_orchestrator.py:1591; src/caty_gateway/setup_orchestrator.py:1695; src/caty_gateway/setup_orchestrator.py:1859; src/caty_gateway/setup_orchestrator.py:1911; src/caty_gateway/setup_orchestrator.py:2040 |
 | CATY_SHARE_DIR | '' | A | local | member env (0600) | src/caty_gateway/share_store.py:126 |
 | CATY_STREAM_TTS | ''; None (unset) | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:1385; src/caty_gateway/caty_gateway.py:163 |
-| CATY_TOKEN | '' | A | secret | member env (0600) | src/caty_gateway/caty_gateway.py:184; src/caty_gateway/caty_gateway.py:4936; src/caty_gateway/cli.py:95 |
+| CATY_TOKEN | '' | A | secret | member env (0600) | src/caty_gateway/caty_gateway.py:184; src/caty_gateway/caty_gateway.py:4969; src/caty_gateway/cli.py:95 |
 | CATY_TOMBSTONE_TTL_DAYS | '7' | C | public | member env (0600) | src/caty_gateway/history_store.py:139 |
 | CATY_TTS_ENGINE | '' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:1503 |
 | CATY_TTS_PROXY | 'http://localhost:5100/v1/audio/speech' | C | local | member env (0600) | src/caty_gateway/caty_gateway.py:180 |
@@ -100,8 +100,8 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | CATY_VOICE_CATALOG_FETCH_LIMIT | 300 | C | public | member env (0600) | src/caty_gateway/voice_catalog.py:437 |
 | CATY_VOICE_CATALOG_TIMEOUT_SECONDS | 15.0 | C | public | member env (0600) | src/caty_gateway/tts_fish.py:354 |
 | CATY_VOICE_CATALOG_TTL_SECONDS | 300 | C | public | member env (0600) | src/caty_gateway/voice_catalog.py:434 |
-| CATY_VOICE_FILLER_MAX_TEXTS_PER_KIND | None (unset); expression: DEFAULT_MAX_TEXTS_PER_KIND | C | public | member env (0600) | src/caty_gateway/filler_pack.py:335; src/caty_gateway/filler_texts.py:44 |
-| CATY_VOICE_FILLER_RECOVERY_QUARANTINE_RETENTION_SECONDS | expression: DEFAULT_RECOVERY_QUARANTINE_RETENTION_SECONDS | C | public | member env (0600) | src/caty_gateway/filler_pack.py:350 |
+| CATY_VOICE_FILLER_MAX_TEXTS_PER_KIND | None (unset); expression: DEFAULT_MAX_TEXTS_PER_KIND | C | public | member env (0600) | src/caty_gateway/filler_pack.py:336; src/caty_gateway/filler_texts.py:44 |
+| CATY_VOICE_FILLER_RECOVERY_QUARANTINE_RETENTION_SECONDS | expression: DEFAULT_RECOVERY_QUARANTINE_RETENTION_SECONDS | C | public | member env (0600) | src/caty_gateway/filler_pack.py:351 |
 | CATY_VOICE_HINT | None (unset); expression: DEFAULT_VOICE_HINT; expression: THIN_MEMBER_VOICE_HINT | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:1281; src/caty_gateway/caty_gateway.py:1302; src/caty_gateway/caty_gateway.py:1306; src/caty_gateway/caty_gateway.py:1368 |
 | CATY_VOICE_PREVIEW_CACHE_BYTES | expression: 32 * 1024 * 1024 | C | public | member env (0600) | src/caty_gateway/voice_preview.py:189 |
 | CATY_VOICE_PREVIEW_CACHE_ENTRIES | 128 | C | public | member env (0600) | src/caty_gateway/voice_preview.py:186 |

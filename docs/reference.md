@@ -112,6 +112,10 @@ The source of truth is [contracts/pairing-v1.md](contracts/pairing-v1.md). Only 
 | Pairing store | `~/.local/state/caty-gateway/pairing/<member>/` (override with `CATY_PAIRING_DIR`) | 0700 / 0600 |
 | launchd | `~/Library/LaunchAgents/ai.caty.gateway.<id>.plist`, log `~/Library/Logs/caty-gateway-<id>.log` | user |
 
+`GET /filler` uses the existing authentication and returns one clip as `200 audio/mpeg`: without `kind`, managed packs draw from `thinking`, `wait`, `large`, `alive`, and `fail`, while legacy installs use their flat filler pool. `GET /filler?kind=<kind>` draws only that kind from the active managed pack; the closed, case-sensitive set is `thinking|wait|large|alive|fail|announce`, and `announce` requires an explicit request. Unknown, empty, or repeated `kind` values return 404 `unknown kind`; an empty or absent kind list, an unavailable/stale/tampered/unpublished pack, or a valid kind on a legacy install returns 404 `no matching fillers`, echoing `kind` and `filler_effective_status`.
+
+Packs created by `import_legacy` with status `legacy-unknown` list every imported clip under every required kind, so `?kind=thinking` on a migrated install returns an arbitrary legacy clip.
+
 ---
 
 <a id="env-tiers"></a>
