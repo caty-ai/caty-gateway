@@ -43,7 +43,7 @@ The `reply_preview` of turn 2 is replaced by `[redacted: 47-character greeting n
 
 ## Findings
 
-- Gateway: nothing new. #38 is confirmed fixed for the `hermes` backend on this host (step 3); `/v1/responses` with a bearer key, pairing, history replay across restart and log hygiene behaved as on 0.1.4.
+- Gateway: nothing new. #38 is confirmed fixed for the `hermes` backend on this host (step 3); `/v1/responses` with a bearer key, pairing, the recall probe across restart and log hygiene behaved as on 0.1.4.
 - Tool: #39 is confirmed fixed on the slow route as well — the Hermes gateway restarts faster than one probe, and `--require-restart-observed` passed by the held-connection proof.
 - Observed, not a defect: the same `setup` guard and env-regeneration behaviour as on the Ollama route (old env/unit moved aside, voice lines re-appended).
 - Observed, not a defect: the smoke Hermes profile was cloned from a household profile for the 0.1.4 run and its persona greets the owner by name; that shows up only in the free-text reply and is redacted here. A future smoke profile should be created with a neutral persona so records need no redaction.

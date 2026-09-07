@@ -41,7 +41,7 @@ Wall time of the recorded phone-sim run: 22 s (qr → done).
 
 ## Findings
 
-- Gateway: nothing new. #38 is confirmed fixed on this host (step 3); the `openai-compat` backend, pairing, history replay across restart and log hygiene behaved as on 0.1.4.
+- Gateway: nothing new. #38 is confirmed fixed on this host (step 3); the `openai-compat` backend, pairing, the recall probe across restart and log hygiene behaved as on 0.1.4.
 - Tool: #39 is confirmed fixed from this host pair — `--require-restart-observed` passes over ssh, once by an observed 1.18 s gap and once (first run) by the held-connection proof when the gap was shorter than one probe.
 - Observed, not a defect: `setup` refuses to overwrite a member whose env/unit were edited outside setup and points at `--reset`; a re-install of an existing smoke member therefore needs the old env/unit moved aside first (backups kept). The regenerated env drops any hand-added lines, so the layer B voice settings had to be re-appended.
 - Observed, not a defect: the recall probe is probabilistic with a 1B model (one miss in the two runs of this record; the 0.1.4 run and the two #39 live runs in PR #50 recalled correctly); a miss shows as `resume_recall: false` with the codeword fragment in `reply_preview`, not as a gateway error.
