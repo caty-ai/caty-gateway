@@ -103,7 +103,8 @@ flowchart LR
 | 内置 | Codex CLI | `codex` | 整理中 |
 | 内置 | OpenClaw | `openclaw` | 整理中 |
 | 内置 | Hermes | `hermes` | 整理中 |
-| 内置 | Ollama ／ LM Studio | `openai-compat` | 整理中 |
+| 内置 | Ollama | `openai-compat` | 有 — [Mac mini](docs/smoke/ollama-mac-mini-2026-09-07-layer-b.md) ／ [Linux VPS](docs/smoke/ollama-hetzner-vps-2026-09-07-layer-b.md)（2026-09-07） |
+| 内置 | LM Studio | `openai-compat` | 整理中 |
 | 有对接方式 | vLLM ／ LiteLLM ／ OpenRouter | `openai-compat` | 无 |
 | 计划中 | opencode ／ Aider ／ Goose ／ Kimi ／ Qwen 等 | — | 无 |
 
@@ -111,7 +112,7 @@ flowchart LR
 - **有对接方式** — 可通过兼容 OpenAI 的 `openai-compat` 方式接入
 - **计划中** — 适配器尚未着手开发。追加步骤见[参与贡献](#contributing)
 
-「实际对话记录」是指本仓库中是否收录了真正从 iPhone 往返进行对话的操作说明。在记录齐全之前，这一列会一直标注为「整理中」。
+「实际对话记录」是指本仓库中是否收录了真正从 iPhone 往返进行对话的记录（做了什么、哪些检查通过、每轮耗时）。步骤本身见 [冒烟测试步骤](docs/smoke/README.md)。在记录齐全之前，这一列会一直标注为「整理中」。
 
 **电脑一侧的 3 项前提条件**
 

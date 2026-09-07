@@ -103,7 +103,8 @@ A "backend" is the AI that caty-gateway talks to behind the scenes. You choose i
 | Bundled | Codex CLI | `codex` | In progress |
 | Bundled | OpenClaw | `openclaw` | In progress |
 | Bundled | Hermes | `hermes` | In progress |
-| Bundled | Ollama ／ LM Studio | `openai-compat` | In progress |
+| Bundled | Ollama | `openai-compat` | Yes — [Mac mini](docs/smoke/ollama-mac-mini-2026-09-07-layer-b.md) ／ [Linux VPS](docs/smoke/ollama-hetzner-vps-2026-09-07-layer-b.md) (2026-09-07) |
+| Bundled | LM Studio | `openai-compat` | In progress |
 | Connectable | vLLM ／ LiteLLM ／ OpenRouter | `openai-compat` | None |
 | Planned | opencode ／ Aider ／ Goose ／ Kimi ／ Qwen and others | — | None |
 
@@ -111,7 +112,7 @@ A "backend" is the AI that caty-gateway talks to behind the scenes. You choose i
 - **Connectable** — connects through the `openai-compat` OpenAI-compatible API
 - **Planned** — no adapter yet. See [Contributing](#contributing) for how to add one
 
-"Live-conversation record" means whether this repository has a written walkthrough of an actual back-and-forth conversation from an iPhone. Until that record exists, this column stays "In progress".
+"Live-conversation record" means whether this repository has a written record of an actual back-and-forth conversation from an iPhone — what was done, which checks passed, and the measured turn times — following the [smoke procedure](docs/smoke/README.md). Until that record exists, this column stays "In progress".
 
 **Three things your computer needs**
 
