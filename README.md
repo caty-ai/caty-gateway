@@ -112,7 +112,7 @@ A "backend" is the AI that caty-gateway talks to behind the scenes. You choose i
 - **Connectable** — connects through the `openai-compat` OpenAI-compatible API
 - **Planned** — no adapter yet. See [Contributing](#contributing) for how to add one
 
-"Live-conversation record" means whether this repository has a written walkthrough of an actual back-and-forth conversation from an iPhone. Until that record exists, this column stays "In progress".
+"Live-conversation record" means whether this repository has a written record of an actual back-and-forth conversation from an iPhone — what was done, which checks passed, and the measured turn times — following the [smoke procedure](docs/smoke/README.md). Until that record exists, this column stays "In progress".
 
 **Three things your computer needs**
 
