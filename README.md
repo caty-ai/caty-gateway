@@ -197,6 +197,8 @@ caty-gateway setup --member me --backend claude
 
 Replace `me` with a short name for yourself using letters and numbers (or just keep `me`). This creates a background service that starts every time your computer boots, and shows a QR code at the end. If you just want to preview what it will do first, add `--plan-only` to see the full plan without changing anything.
 
+Running it over ssh or from a script? Add `--yes` (there is no terminal to answer the confirmation) and put `CATY_QR_DELIVERY=tty` in front so the QR code is drawn as text: `CATY_QR_DELIVERY=tty caty-gateway setup --member me --backend claude --yes`
+
 **4. Scan the QR code**
 
 Open CatyPhone and scan the QR code shown on screen. Your iPhone and computer will connect, and you'll be able to start talking. The QR code expires after 10 minutes, and can only be scanned once. To get a new one, run `caty-gateway qr --member <id>` (see [Reissuing the QR](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr)).

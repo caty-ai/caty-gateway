@@ -29,7 +29,8 @@ caty-gateway setup --member MEMBER [--backend BACKEND] [--port PORT] [--name NAM
 | `--port` | 待ち受けポート（既定 8788）。使用中なら preflight で FAIL |
 | `--name` `--accent` | `/identity` が返す表示名とアクセント色 |
 | `--public-url` | QR に載せる到達先。省略時は Tailscale IPv4 から生成 |
-| `--qr-delivery` | `tty`（端末に描画）／`url`（配信 URL を表示）／`auto` |
+| `--qr-delivery` | `tty`（端末に描画）／`url`（配信 URL を表示）／`auto`（stdout が端末なら `tty`、そうでなければ `url`）。ssh 越しやスクリプトでは `tty`（または `CATY_QR_DELIVERY=tty`）を使う。`url` はワンショット PNG が取得されるか資格情報が期限切れになるまで返らない |
+| `--yes` | `Run this plan? [y/N]` の確認なしで計画を承認する。stdin が端末でないとき（ssh・スクリプト）は必須。無いと `setup` は `stdin is not interactive; rerun with --yes to accept the plan` で終了する |
 | `--plan-only` | 計画と実行予定の一覧を表示して終了。ファイル・サービス・状態を変更しない |
 | `--no-history` | `CATY_HISTORY_DIR` を設定しない（履歴を残さない） |
 | `--reset` | 再開用メタデータだけを捨てる |

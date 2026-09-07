@@ -197,6 +197,8 @@ caty-gateway setup --member me --backend claude
 
 把 `me` 换成代表你自己的简短英数字名称（直接保留 `me` 也可以）。这会创建一个每次电脑启动都会运行的常驻服务，最后会显示一个二维码。如果想先看看会执行什么，可以加上 `--plan-only`，它只会列出计划执行的内容，不会做任何改动。
 
+通过 ssh 或脚本运行时，没有终端来回答确认提示，请加上 `--yes`，并在前面加上 `CATY_QR_DELIVERY=tty` 让二维码以文本形式绘制: `CATY_QR_DELIVERY=tty caty-gateway setup --member me --backend claude --yes`
+
 **4. 扫描二维码**
 
 打开 CatyPhone，扫描显示出来的二维码。这样 iPhone 和电脑就连接上了，可以开始用语音对话。二维码 10 分钟后会失效，扫过一次也就不能再用。想重新显示，请执行 `caty-gateway qr --member <id>`（步骤见 [重新生成二维码](https://github.com/caty-ai/caty-gateway/blob/main/docs/engineering.md#reissue-qr)）。

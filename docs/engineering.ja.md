@@ -20,13 +20,19 @@ caty-gateway setup --member me --backend claude               # サービス設�
 
 `setup` は preflight → 衝突検出 → サービス設置 → `/health` 待機 → `/identity` 認証確認 → voice 状態確認 → QR 表示の順に進みます。途中で止まったら `caty-gateway status --member me` で位置を確認し、同じコマンドを再実行すると続きから再開します。
 
+ssh 越しやスクリプトから（stdin が対話端末でない場合）は、`setup` が `Run this plan? [y/N]` を尋ねられず `stdin is not interactive; rerun with --yes to accept the plan` で終了します。`--yes` を付けて計画を承認し、あわせて `CATY_QR_DELIVERY=tty` を指定して最後の QR をテキストで描画させてください。既定の `auto` は stdout が端末でない場合に URL モードに落ち、ワンショット PNG が取得されるか資格情報が期限切れになるまで返ってきません。
+
+```sh
+CATY_QR_DELIVERY=tty caty-gateway setup --member <id> --backend <b> --yes
+```
+
 <a id="commands"></a>
 
 ### サブコマンド
 
 | コマンド | 役割 |
 |---|---|
-| `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--no-history] [--reset]` | preflight から QR 表示までの一括セットアップ。`--plan-only` は計画表示のみ |
+| `setup --member <id> --backend <b> [--port N] [--public-url URL] [--plan-only] [--yes] [--no-history] [--reset]` | preflight から QR 表示までの一括セットアップ。`--plan-only` は計画表示のみ。`--yes` は確認プロンプトなしで承認（stdin が端末でないときは必須） |
 | `status --member <id> [--wait]` | セットアップ／supervisor の進行状態 |
 | `serve` | フォアグラウンド起動。サービスから呼ばれる実体。非 loopback bind で `CATY_TOKEN` が空なら起動を拒否（fail-closed） |
 | `qr [--member <id>] [--qr-delivery auto\|tty\|url]` | ペアリング QR の再発行 |
