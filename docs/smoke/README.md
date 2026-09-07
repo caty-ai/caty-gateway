@@ -159,6 +159,20 @@ python3 -B tools/smoke/phone-sim.py \
   --label '<route>@<host>'
 ```
 
+On Linux, `systemctl --user restart` completes in tens of milliseconds while
+the SSH round trip takes hundreds, so `restart.observed: false` with
+`downtime_s: 0.0` is expected. Phone-sim then records proof in
+`restart.proven_by`: `"connection-drop"` means an idle TCP connection held open across
+the restart window broke (on a direct `http://` connection this is the old process
+closing its sockets on exit; the sentinel is not used for `https://`);
+`"instance-marker"` uses a gateway instance marker when exposed;
+`"health-gap"` means an outage was seen,
+optionally inside the `--restart-grace` window (default: 5 seconds).
+A single failed probe is not counted as an outage unless the connection was
+refused or a second consecutive probe also fails. In the record, write the
+journal `Stopping` → `Started` pair and the MainPID change
+next to `proven_by`.
+
 The restart commands and log locations above match
 [Engineering: Service operation](../engineering.md#service). History normally
 lives at `~/.local/state/caty-gateway/history/<id>/`; pairing state lives at
@@ -171,10 +185,11 @@ is an alternative to either env source.
 
 Exactly three turns run, with one session id. The last asks for the first turn's
 codeword. Read `resume_recall` as a recall probe, not proof of all history content.
-`restart.observed: false` means no health outage was seen; it is a warning unless
-`--require-restart-observed` is set. `--no-restart` reports a skipped restart and
-cannot establish restart/resume. No log source means `log_check: "skipped"`;
-`--require-log-check` makes that fatal. Log files and commands are repeatable; `--log-timeout` sets each log command's timeout (default: 60 seconds).
+`restart.observed: false` means no health outage was seen; check
+`restart.proven_by` for other restart evidence. `--require-restart-observed`
+accepts any of the three proof paths and fails when none is available.
+`--no-restart` reports a skipped restart and cannot establish restart/resume.
+No log source means `log_check: "skipped"`; `--require-log-check` makes that fatal. Log files and commands are repeatable; `--log-timeout` sets each log command's timeout (default: 60 seconds).
 
 The final stdout is one JSON line; progress goes to stderr. Exit 0 means the
 selected checks passed. Save only that redacted summary in the record, never
