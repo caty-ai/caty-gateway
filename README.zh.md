@@ -103,7 +103,8 @@ flowchart LR
 | 内置 | Codex CLI | `codex` | 整理中 |
 | 内置 | OpenClaw | `openclaw` | 整理中 |
 | 内置 | Hermes | `hermes` | 整理中 |
-| 内置 | Ollama ／ LM Studio | `openai-compat` | 整理中 |
+| 内置 | Ollama | `openai-compat` | 有 — [Mac mini](docs/smoke/ollama-mac-mini-2026-09-07-layer-b.md) ／ [Linux VPS](docs/smoke/ollama-hetzner-vps-2026-09-07-layer-b.md)（2026-09-07） |
+| 内置 | LM Studio | `openai-compat` | 整理中 |
 | 有对接方式 | vLLM ／ LiteLLM ／ OpenRouter | `openai-compat` | 无 |
 | 计划中 | opencode ／ Aider ／ Goose ／ Kimi ／ Qwen 等 | — | 无 |
 

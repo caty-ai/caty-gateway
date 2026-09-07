@@ -103,7 +103,8 @@ A "backend" is the AI that caty-gateway talks to behind the scenes. You choose i
 | Bundled | Codex CLI | `codex` | In progress |
 | Bundled | OpenClaw | `openclaw` | In progress |
 | Bundled | Hermes | `hermes` | In progress |
-| Bundled | Ollama ／ LM Studio | `openai-compat` | In progress |
+| Bundled | Ollama | `openai-compat` | Yes — [Mac mini](docs/smoke/ollama-mac-mini-2026-09-07-layer-b.md) ／ [Linux VPS](docs/smoke/ollama-hetzner-vps-2026-09-07-layer-b.md) (2026-09-07) |
+| Bundled | LM Studio | `openai-compat` | In progress |
 | Connectable | vLLM ／ LiteLLM ／ OpenRouter | `openai-compat` | None |
 | Planned | opencode ／ Aider ／ Goose ／ Kimi ／ Qwen and others | — | None |
 

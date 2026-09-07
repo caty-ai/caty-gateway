@@ -103,7 +103,8 @@ flowchart LR
 | มาพร้อมในตัว | Codex CLI | `codex` | อยู่ระหว่างจัดเตรียม |
 | มาพร้อมในตัว | OpenClaw | `openclaw` | อยู่ระหว่างจัดเตรียม |
 | มาพร้อมในตัว | Hermes | `hermes` | อยู่ระหว่างจัดเตรียม |
-| มาพร้อมในตัว | Ollama ／ LM Studio | `openai-compat` | อยู่ระหว่างจัดเตรียม |
+| มาพร้อมในตัว | Ollama | `openai-compat` | มีแล้ว — [Mac mini](docs/smoke/ollama-mac-mini-2026-09-07-layer-b.md) ／ [Linux VPS](docs/smoke/ollama-hetzner-vps-2026-09-07-layer-b.md) (2026-09-07) |
+| มาพร้อมในตัว | LM Studio | `openai-compat` | อยู่ระหว่างจัดเตรียม |
 | มีวิธีเชื่อมต่อ | vLLM ／ LiteLLM ／ OpenRouter | `openai-compat` | ไม่มี |
 | อยู่ในแผน | opencode ／ Aider ／ Goose ／ Kimi ／ Qwen เป็นต้น | — | ไม่มี |
 
