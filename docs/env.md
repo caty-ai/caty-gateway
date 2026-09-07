@@ -89,7 +89,7 @@ Unknown names are unclassified and make `--check` fail until reviewed in the scr
 | CATY_SETUP_SUPERVISED | None (unset) | D | public | process-only | src/caty_gateway/setup_orchestrator.py:1089; src/caty_gateway/setup_orchestrator.py:1591; src/caty_gateway/setup_orchestrator.py:1695; src/caty_gateway/setup_orchestrator.py:1859; src/caty_gateway/setup_orchestrator.py:1911; src/caty_gateway/setup_orchestrator.py:2040 |
 | CATY_SHARE_DIR | '' | A | local | member env (0600) | src/caty_gateway/share_store.py:126 |
 | CATY_STREAM_TTS | ''; None (unset) | C | public | member env (0600) | src/caty_gateway/caty_gateway.py:1385; src/caty_gateway/caty_gateway.py:163 |
-| CATY_TOKEN | '' | A | secret | member env (0600) | src/caty_gateway/caty_gateway.py:184; src/caty_gateway/caty_gateway.py:4958; src/caty_gateway/cli.py:95 |
+| CATY_TOKEN | '' | A | secret | member env (0600) | src/caty_gateway/caty_gateway.py:184; src/caty_gateway/caty_gateway.py:4969; src/caty_gateway/cli.py:95 |
 | CATY_TOMBSTONE_TTL_DAYS | '7' | C | public | member env (0600) | src/caty_gateway/history_store.py:139 |
 | CATY_TTS_ENGINE | '' | A | public | member env (0600) | src/caty_gateway/caty_gateway.py:1503 |
 | CATY_TTS_PROXY | 'http://localhost:5100/v1/audio/speech' | C | local | member env (0600) | src/caty_gateway/caty_gateway.py:180 |

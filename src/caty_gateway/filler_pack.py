@@ -829,8 +829,8 @@ class FillerPackRegistry:
             else:
                 relatives = [
                     relative
-                    for kind in REQUIRED_KINDS
-                    for relative in manifest["files"][kind]
+                    for required_kind in REQUIRED_KINDS
+                    for relative in manifest["files"][required_kind]
                 ]
             if not relatives:
                 return {"status": "unavailable", "audio": None}

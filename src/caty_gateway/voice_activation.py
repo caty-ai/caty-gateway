@@ -736,5 +736,6 @@ class VoiceActivationService:
             pack_id,
             active_provider=config.get("voice_provider", ""),
             active_reference_id=config.get("voice_reference_id", ""),
+            # kwargs splat keeps no-kind calls byte-identical for fakes that do not accept kind.
             **({"kind": kind} if kind is not None else {}),
         )

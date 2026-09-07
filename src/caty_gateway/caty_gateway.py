@@ -4868,18 +4868,29 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/filler":
             if not self._require_auth():
                 return
-            kinds = urllib.parse.parse_qs(parsed.query, keep_blank_values=True).get("kind")
+            query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True) if parsed.query else {}
+            unexpected_keys = sorted(set(query) - {"kind"})
+            if unexpected_keys:
+                self._send_json(404, {
+                    "ok": False,
+                    "error": "unknown query",
+                    "keys": unexpected_keys,
+                    "allowed": ["kind"],
+                })
+                return
+            kinds = query.get("kind")
             kind = None
             if kinds is not None:
                 if len(kinds) != 1 or kinds[0] not in filler_texts.KINDS:
                     self._send_json(404, {
                         "ok": False,
                         "error": "unknown kind",
-                        "kind": kinds[0] if len(kinds) == 1 else str(kinds),
+                        "kind": kinds[0] if len(kinds) == 1 else kinds,
                         "kinds": list(filler_texts.KINDS),
                     })
                     return
                 kind = kinds[0]
+            # kwargs splats keep no-kind calls byte-identical for fakes that do not accept kind.
             kind_args = {"kind": kind} if kind is not None else {}
             try:
                 service = _voice_activation_service
