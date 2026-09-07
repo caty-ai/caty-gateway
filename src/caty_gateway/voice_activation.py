@@ -725,7 +725,7 @@ class VoiceActivationService:
             "inference_contract_version": self.inference_contract_version(),
         }
 
-    def filler_audio(self, config=None):
+    def filler_audio(self, config=None, *, kind=None):
         config = self.config.get() if config is None else config
         if config.get("voice_management_state") == "legacy":
             return None
@@ -736,4 +736,5 @@ class VoiceActivationService:
             pack_id,
             active_provider=config.get("voice_provider", ""),
             active_reference_id=config.get("voice_reference_id", ""),
+            **({"kind": kind} if kind is not None else {}),
         )

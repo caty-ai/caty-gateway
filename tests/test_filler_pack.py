@@ -95,6 +95,74 @@ class FillerPackRegistryTest(unittest.TestCase):
         )
         return manifest, synth
 
+    def test_kind_draws_only_requested_files_and_pool_excludes_announce(self):
+        registry = self.registry()
+        manifest, _ = self.stage(registry, texts={
+            kind: [f"first-{kind}", f"second-{kind}"] for kind in filler_pack.KINDS
+        })
+        pack = self.root / "packs" / manifest["pack_id"]
+        expected = {
+            kind: {(pack / relative).read_bytes() for relative in files}
+            for kind, files in manifest["files"].items()
+        }
+        binding = {"active_provider": "fish", "active_reference_id": "voice-a"}
+        for kind in ("thinking", "wait", "announce"):
+            for _ in range(20):
+                result = registry.read_audio(manifest["pack_id"], kind=kind, **binding)
+                self.assertEqual(result["status"], "ready")
+                self.assertIn(result["audio"], expected[kind])
+        pooled = set().union(*(expected[kind] for kind in KINDS))
+        for _ in range(40):
+            result = registry.read_audio(manifest["pack_id"], **binding)
+            self.assertIn(result["audio"], pooled)
+            self.assertNotIn(result["audio"], expected["announce"])
+
+    def test_kind_empty_legacy_unknown_retains_status(self):
+        legacy = Path(self.tmp.name) / "legacy-kind"
+        legacy.mkdir()
+        (legacy / "filler.mp3").write_bytes(valid_mp3(b"legacy"))
+        registry = self.registry()
+        manifest = registry.import_legacy(
+            legacy, pack_id="legacy-kind", generated_for_provider="fish",
+            generated_for_reference_id="voice-a",
+        )
+        self.assertEqual(manifest["status"], "legacy-unknown")
+        empty = "wait"
+        pack = self.root / "packs" / manifest["pack_id"]
+        manifest["files"][empty] = []
+        (pack / "manifest.json").write_text(json.dumps(manifest))
+        sidecar_path = pack / "texts.json"
+        sidecar = json.loads(sidecar_path.read_text())
+        sidecar["texts"][empty] = []
+        sidecar_path.write_text(json.dumps(sidecar))
+        self.assertEqual(registry.inspect(manifest["pack_id"])["status"], "legacy-unknown")
+        self.assertEqual(registry.read_audio(
+            manifest["pack_id"], kind=empty,
+            active_provider="fish", active_reference_id="voice-a",
+        ), {"status": "legacy-unknown", "audio": None})
+
+    def test_kind_invalid_stale_unpublished_and_tampered_fail_closed(self):
+        registry = self.registry()
+        manifest, _ = self.stage(registry)
+        binding = {"active_provider": "fish", "active_reference_id": "voice-a"}
+        self.assertEqual(registry.read_audio("pack-a", kind="foo", **binding),
+                         {"status": "unavailable", "audio": None})
+        self.assertEqual(registry.read_audio(
+            "pack-a", kind="wait", active_provider="fish", active_reference_id="other",
+        ), {"status": "stale", "audio": None})
+        pack = self.root / "packs" / "pack-a"
+        manifest_path = pack / "manifest.json"
+        stored = json.loads(manifest_path.read_text())
+        stored["status"] = "staged"
+        manifest_path.write_text(json.dumps(stored))
+        self.assertEqual(registry.read_audio("pack-a", kind="wait", **binding),
+                         {"status": "unavailable", "audio": None})
+        stored["status"] = "ready"
+        manifest_path.write_text(json.dumps(stored))
+        (pack / manifest["files"]["wait"][0]).write_bytes(valid_mp3(b"tampered"))
+        self.assertEqual(registry.read_audio("pack-a", kind="wait", **binding),
+                         {"status": "unavailable", "audio": None})
+
     def test_stage_uses_explicit_target_and_publishes_complete_manifest(self):
         registry = self.registry()
         active_voice = "voice-current"

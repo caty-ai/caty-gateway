@@ -112,6 +112,8 @@ caty-gateway setup --member MEMBER [--backend BACKEND] [--port PORT] [--name NAM
 | ペアリングストア | `~/.local/state/caty-gateway/pairing/<member>/`（`CATY_PAIRING_DIR` で変更可） | 0700 / 0600 |
 | launchd | `~/Library/LaunchAgents/ai.caty.gateway.<id>.plist`・ログ `~/Library/Logs/caty-gateway-<id>.log` | ユーザー |
 
+`GET /filler` は既存の認証を使い、1 クリップを `200 audio/mpeg` で返します。`kind` なしでは管理パックの `thinking`・`wait`・`large`・`alive`・`fail` から抽選し、legacy 環境では従来のフラットな音声プールを使います。`GET /filler?kind=<kind>` は有効な管理パックの指定種別だけから抽選します。指定可能な値は大文字小文字を区別する `thinking|wait|large|alive|fail|announce` のみで、`announce` は明示指定時だけ対象です。未知・空・重複の `kind` は 404 `unknown kind`、指定種別のリストが空または存在しない場合、パックが利用不可・stale・改ざん済み・未公開の場合、legacy 環境への有効な種別指定は 404 `no matching fillers` となり、`kind` と `filler_effective_status` を返します。
+
 ---
 
 <a id="env-tiers"></a>

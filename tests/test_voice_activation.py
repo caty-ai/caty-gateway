@@ -217,6 +217,27 @@ class VoiceActivationServiceTest(unittest.TestCase):
             os.environ["CATY_CONFIG_DIR"] = self.old_config_dir
         shutil.rmtree(self.tmp)
 
+    def test_filler_audio_passes_kind_and_legacy_ignores_kind(self):
+        snapshot = {
+            "voice_management_state": "managed", "active_pack_id": "pack-kind",
+            "voice_provider": "fish", "voice_reference_id": "voice-kind",
+        }
+        with mock.patch.object(self.registry, "read_audio", return_value={
+            "status": "ready", "audio": b"wait-file",
+        }) as read:
+            self.assertEqual(self.service.filler_audio(snapshot, kind="wait"),
+                             {"status": "ready", "audio": b"wait-file"})
+            read.assert_called_once_with(
+                "pack-kind", active_provider="fish", active_reference_id="voice-kind",
+                kind="wait",
+            )
+            read.reset_mock()
+            for kind in (None, "wait", "announce"):
+                self.assertIsNone(self.service.filler_audio(
+                    {"voice_management_state": "legacy"}, kind=kind,
+                ))
+            read.assert_not_called()
+
     def make_service(self, config=None):
         return voice_activation.VoiceActivationService(
             config or self.config,
@@ -1152,6 +1173,64 @@ class VoiceActivationHttpTest(unittest.TestCase):
     def request(self, method, path, payload=None, headers=None):
         status, _headers, body = self.request_raw(method, path, payload, headers)
         return status, json.loads(body)
+
+    def test_filler_kind_http_reads_real_pack_in_eager_and_lazy_paths(self):
+        with tempfile.TemporaryDirectory(prefix="http-kind-") as tmp:
+            registry = filler_pack.FillerPackRegistry(Path(tmp) / "registry")
+            manifest = registry.stage_pack(
+                pack_id="http-kind", generated_for_provider="fish",
+                generated_for_reference_id="voice-kind", filler_text_version="v1",
+                texts={kind: [kind] for kind in filler_texts.KINDS},
+                synthesizer=lambda text, _ref: b"\xff\xfb\x90\x64" + text.encode()
+                    + b"x" * filler_pack.MIN_AUDIO_BYTES,
+                inference_contract_version="test",
+            )
+            config = mock.Mock()
+            config.path.return_value = str(Path(tmp) / "config.json")
+            service = voice_activation.VoiceActivationService(
+                config, FakeCatalog(), registry, member_id="test-member",
+                synthesizer=mock.Mock(), inference_contract_version=lambda: "test",
+                engine_truth=lambda: "fish",
+            )
+            snapshot = {
+                "voice_management_state": "managed", "active_pack_id": "http-kind",
+                "voice_provider": "fish", "voice_reference_id": "voice-kind",
+            }
+            service.config.get.return_value = snapshot
+            auth = {"Authorization": "Bearer member-secret"}
+            for lazy in (False, True):
+                cg._voice_activation_service = None if lazy else service
+                with mock.patch.object(cg, "CONFIG", service.config), mock.patch.object(
+                    cg, "_get_voice_activation_service", return_value=service,
+                ):
+                    for kind in ("wait", "announce"):
+                        status, headers, body = self.request_raw(
+                            "GET", f"/filler?kind={kind}", headers=auth,
+                        )
+                        expected = (registry.packs_dir / "http-kind"
+                                    / manifest["files"][kind][0]).read_bytes()
+                        self.assertEqual(status, 200)
+                        self.assertEqual(headers["Content-Type"], "audio/mpeg")
+                        self.assertEqual(body, expected)
+
+    def test_filler_kind_http_empty_stale_unavailable_and_auth_shapes(self):
+        auth = {"Authorization": "Bearer member-secret"}
+        service = mock.Mock()
+        cg._voice_activation_service = service
+        for effective in ("ready", "legacy-unknown", "stale", "unavailable"):
+            service.filler_audio.return_value = {"status": effective, "audio": None}
+            status, payload = self.request("GET", "/filler?kind=wait", headers=auth)
+            self.assertEqual(status, 404)
+            self.assertEqual(payload, {
+                "ok": False, "error": "no matching fillers", "kind": "wait",
+                "filler_effective_status": effective,
+            })
+        service.reset_mock()
+        self.assertEqual(self.request("GET", "/filler?kind=foo")[0], 401)
+        service.filler_audio.assert_not_called()
+        for path in ("/filler/extra?kind=wait", "/fillers-extra?kind=wait"):
+            self.assertEqual(self.request("GET", path, headers=auth)[0], 404)
+        service.filler_audio.assert_not_called()
 
     def test_new_read_and_write_routes_are_fail_closed_and_scoped(self):
         self.assertEqual(self.request("GET", "/tts/voice-state")[0], 401)

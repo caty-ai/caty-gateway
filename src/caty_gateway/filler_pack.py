@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 import uuid
 
 from caty_gateway.filler_texts import (
+    KINDS,
     OPTIONAL_KINDS,
     REQUIRED_KINDS,
     ValidationError,
@@ -804,8 +805,10 @@ class FillerPackRegistry:
             }
             return resolved
 
-    def read_audio(self, pack_id, *, active_provider, active_reference_id):
+    def read_audio(self, pack_id, *, active_provider, active_reference_id, kind=None):
         """Validate voice binding and hashes, then read one clip under the lock."""
+        if kind is not None and kind not in KINDS:
+            return {"status": "unavailable", "audio": None}
         with self._locked(shared=True):
             directory = self._pack_path(pack_id)
             try:
@@ -819,11 +822,16 @@ class FillerPackRegistry:
                 or manifest["generated_for_reference_id"] != active_reference_id
             ):
                 return {"status": "stale", "audio": None}
-            relatives = [
-                relative
-                for kind in REQUIRED_KINDS
-                for relative in manifest["files"][kind]
-            ]
+            if kind is not None:
+                relatives = list(manifest["files"].get(kind, ()))
+                if not relatives:
+                    return {"status": manifest["status"], "audio": None}
+            else:
+                relatives = [
+                    relative
+                    for kind in REQUIRED_KINDS
+                    for relative in manifest["files"][kind]
+                ]
             if not relatives:
                 return {"status": "unavailable", "audio": None}
             relative = secrets.choice(relatives)

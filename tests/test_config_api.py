@@ -555,6 +555,41 @@ class ConfigApiTest(unittest.TestCase):
         self.addCleanup(lambda: setattr(cg, "tts", old_tts))
         return paths
 
+    def test_filler_invalid_kind_rejected_before_legacy_config_or_service(self):
+        with mock.patch.object(cg, "_voice_activation_service", None), mock.patch.object(
+            cg, "_get_voice_activation_service",
+        ) as initialize, mock.patch.object(cg.CONFIG, "get") as config_get:
+            for query, raw in (("kind=", ""), ("kind=foo", "foo"),
+                               ("kind=Wait", "Wait"),
+                               ("kind=wait&kind=thinking", "['wait', 'thinking']")):
+                status, _, body = self.request(
+                    "GET", "/filler?" + query, headers=self.write_headers(),
+                )
+                self.assertEqual(status, 404)
+                self.assertEqual(json.loads(body), {
+                    "ok": False, "error": "unknown kind", "kind": raw,
+                    "kinds": ["thinking", "wait", "large", "alive", "fail", "announce"],
+                })
+            initialize.assert_not_called()
+            config_get.assert_not_called()
+
+    def test_filler_valid_kind_on_legacy_never_returns_flat_pool(self):
+        with mock.patch.object(cg, "_voice_activation_service", None), mock.patch.object(
+            cg, "_get_voice_activation_service",
+        ) as initialize, mock.patch.object(
+            cg.CONFIG, "get", return_value={"voice_management_state": "legacy"},
+        ), mock.patch.object(cg, "FILLERS", [(b"ID3flat-pool", "flat.mp3")]):
+            status, _, body = self.request(
+                "GET", "/filler?kind=wait", headers=self.write_headers(),
+            )
+            self.assertEqual(status, 404)
+            self.assertNotEqual(body, b"ID3flat-pool")
+            self.assertEqual(json.loads(body), {
+                "ok": False, "error": "no matching fillers", "kind": "wait",
+                "filler_effective_status": "legacy",
+            })
+            initialize.assert_not_called()
+
     def test_fillers_put_replaces_not_appends(self):
         mp3_a = b"\xff\xfbfiller A"  # frame-sync 形式の mp3 magic
         mp3_b = b"ID3filler B"       # ID3 タグ形式
