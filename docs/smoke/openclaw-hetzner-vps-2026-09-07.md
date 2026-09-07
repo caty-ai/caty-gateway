@@ -16,7 +16,7 @@ Why this host: the "OpenClaw = Mac mini" row on #2 was stale (the mini has no `o
 | # | step | result | terminal value |
 |---|---|---|---|
 | 1 | clean install | PASS | shared with the Ollama record on this host: `uv tool install caty-gateway` → `caty-gateway==0.1.4` |
-| 2 | doctor all PASS | FAIL (expected: no agent) | `doctor --backend openclaw --port 18774` with no `OPENCLAW_BIN` / `CATY_AGENT`: 12 PASS, 2 FAIL — `openclaw agents: set OPENCLAW_BIN to an executable and configure its agents` and `openclaw agent: set CATY_AGENT to an agent shown by openclaw agents list`; `openclaw gateway token` and `openclaw gateway` PASS (a gateway is reachable on the default port — a household member's) |
+| 2 | doctor all PASS | FAIL (expected: no agent) | `doctor --backend openclaw --port 18774` with no `OPENCLAW_BIN` / `CATY_AGENT`: 12 PASS, 2 FAIL — `openclaw agents: set OPENCLAW_BIN to an executable and configure its agents` and `openclaw agent: set CATY_AGENT to an agent shown by openclaw agents list`; `openclaw gateway token` and `openclaw gateway` PASS (a gateway answers on the default port 18789; `ss -ltnp` and the unit survey show that port belongs to one of the member gateways) |
 | 3 | setup / QR issued | not attempted | no smoke agent to name in `CATY_AGENT` (Findings) |
 | 4 | pair claim (phone-sim) | not attempted | — |
 | 5 | turns 1-2 | not attempted | — |
