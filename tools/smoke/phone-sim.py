@@ -12,8 +12,10 @@ import json
 import re
 import secrets
 import shlex
+import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.parse
 
@@ -110,7 +112,7 @@ def build_summary(*, label="", session_id="", started_at=None):
         "ok": False, "stage": "qr", "stages": [], "label": label, "layer": "A",
         "session_id": session_id, "pair_id": None, "member_id": None,
         "gateway_url": None, "claim": {"http_status": None, "latency_s": None},
-        "turns": [], "restart": {"observed": "skipped", "downtime_s": None},
+        "turns": [], "restart": {"observed": "skipped", "downtime_s": None, "proven_by": None},
         "resume_recall": None, "log_check": "skipped", "log_secret_leak": None,
         "warnings": [], "error": None, "started_at": started_at or utc_now(),
         "finished_at": None,
@@ -143,6 +145,8 @@ def make_parser():
     restart.add_argument("--restart-cmd", metavar="CMD", help="required unless --no-restart")
     restart.add_argument("--no-restart", action="store_true")
     parser.add_argument("--restart-timeout", type=positive_seconds, default=90)
+    parser.add_argument("--restart-grace", type=positive_seconds, default=5,
+                        help="health observation grace window in seconds (default: 5)")
     parser.add_argument("--turn-timeout", type=positive_seconds, default=180)
     parser.add_argument("--claim-timeout", type=positive_seconds, default=15)
     parser.add_argument("--log-timeout", type=positive_seconds, default=60)
@@ -151,7 +155,8 @@ def make_parser():
     parser.add_argument("--session-id", default="smoke-" + time.strftime("%Y%m%d", time.gmtime()) + "-" + secrets.token_hex(3))
     parser.add_argument("--label", default="")
     parser.add_argument("--require-recall", action="store_true")
-    parser.add_argument("--require-restart-observed", action="store_true")
+    parser.add_argument("--require-restart-observed", action="store_true",
+                        help="fail unless the restart is observed as a health gap or proven by instance marker / connection drop")
     parser.add_argument("--require-log-check", action="store_true")
     return parser
 
@@ -252,35 +257,131 @@ def do_turn(args, payload, token, text, result, known):
         result["latency_s"] = round(time.monotonic() - started, 3)
 
 
-def do_restart(args, payload, token, summary):
+def probe_marker(url, token, timeout):
+    """Read optional instance evidence without retaining remote content."""
+    try:
+        _, _, raw = request(url, "GET", "/health", token=token, timeout=timeout)
+        obj = json.loads(raw)
+        if isinstance(obj, dict):
+            for key in ("started_at", "boot_id", "instance", "pid"):
+                if key in obj:
+                    return str(obj[key])
+    except Exception:
+        pass
+    return None
+
+
+def open_sentinel(url, timeout):
+    """Hold an idle, credential-free connection to a direct HTTP gateway."""
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        if parsed.scheme == "http":
+            return socket.create_connection((parsed.hostname, parsed.port or 80), timeout=timeout)
+    except Exception:
+        pass
+    return None
+
+
+def sentinel_dropped(sock):
+    if sock is None:
+        return None
+    try:
+        sock.settimeout(0.2)
+        return sock.recv(1) == b""
+    except socket.timeout:
+        return False
+    except OSError:
+        return True
+    finally:
+        sock.close()
+
+
+def do_restart(args, payload, token, summary, *, deferred=None):
     if args.no_restart:
         summary["warnings"].append("restart skipped; turn 3 does not prove persistence across restart")
         if args.require_restart_observed:
             raise SmokeFailure("restart observation required but restart skipped")
         return
-    result = summary["restart"] = {"observed": False, "downtime_s": None}
+    result = summary["restart"] = {
+        "observed": False, "downtime_s": None, "proven_by": None,
+        "grace_s": args.restart_grace, "marker_changed": None, "sentinel_dropped": None,
+    }
     deadline = time.monotonic() + args.restart_timeout
-    run_command(args.restart_cmd, remaining(deadline))
-    down_since = None
-    while True:
-        probe_started = time.monotonic()
+
+    def budget():
         try:
-            status, _, _ = request(payload["url"], "GET", "/health", token=token,
-                                   timeout=min(0.5, remaining(deadline)))
-        except (OSError, http.client.HTTPException):
-            status = None
-        if status == 200:
-            result["downtime_s"] = round(time.monotonic() - down_since, 3) if down_since is not None else 0.0
-            if not result["observed"]:
-                summary["warnings"].append("restart not observed; health was already 200 after command")
-                if args.require_restart_observed:
-                    raise SmokeFailure("restart was not observed")
-            return
-        result["observed"] = True
-        if down_since is None:
-            down_since = probe_started
-        result["downtime_s"] = round(time.monotonic() - down_since, 3)
-        pause(deadline)
+            return remaining(deadline)
+        except SmokeFailure:
+            raise SmokeFailure("restart timed out") from None
+
+    marker_before = probe_marker(payload["url"], token, min(2.0, budget()))
+    sentinel = open_sentinel(payload["url"], min(2.0, budget()))
+    command_errors = []
+    command_finished = None
+
+    def restart():
+        nonlocal command_finished
+        try:
+            run_command(args.restart_cmd, budget())
+        except BaseException as error:
+            command_errors.append(error)
+        finally:
+            command_finished = time.monotonic()
+
+    down_since = None
+    try:
+        thread = threading.Thread(target=restart, daemon=True)
+        thread.start()
+        while True:
+            budget()
+            running = thread.is_alive()
+            if not running and command_errors:
+                break
+            probe_started = time.monotonic()
+            try:
+                status, _, _ = request(payload["url"], "GET", "/health", token=token,
+                                       timeout=min(0.5, budget()))
+            except (OSError, http.client.HTTPException):
+                status = None
+            budget()
+            if status == 200:
+                result["downtime_s"] = round(time.monotonic() - down_since, 3) if down_since is not None else 0.0
+                if not running and (result["observed"] or
+                                    time.monotonic() >= command_finished + args.restart_grace):
+                    break
+            else:
+                result["observed"] = True
+                if down_since is None:
+                    down_since = probe_started
+                result["downtime_s"] = round(time.monotonic() - down_since, 3)
+            time.sleep(min(0.5, budget()))
+        if command_errors:
+            raise command_errors[0]
+        budget()
+        result["sentinel_dropped"] = sentinel_dropped(sentinel)
+        sentinel = None  # The helper owns closure once checked.
+        marker_after = probe_marker(payload["url"], token, min(2.0, budget()))
+        budget()
+        if marker_before is not None and marker_after is not None:
+            result["marker_changed"] = marker_before != marker_after
+        if result["observed"]:
+            result["proven_by"] = "health-gap"
+        elif result["marker_changed"]:
+            result["proven_by"] = "instance-marker"
+        elif result["sentinel_dropped"]:
+            result["proven_by"] = "connection-drop"
+        if not result["observed"]:
+            summary["warnings"].append(
+                "restart not observed as a health gap; proven by " + result["proven_by"]
+                if result["proven_by"] else
+                "restart not observed; health was already 200 after command")
+            if args.require_restart_observed and result["proven_by"] is None:
+                failure = SmokeFailure("restart was not observed or proven")
+                if deferred is not None:
+                    deferred.append(failure)
+    finally:
+        if sentinel is not None:
+            sentinel.close()
 
 
 def sanitize_summary(value, known):
@@ -296,6 +397,7 @@ def sanitize_summary(value, known):
 def main(argv):
     summary = build_summary()
     known = {}
+    deferred = []
 
     def stage(name):
         summary["stage"] = name
@@ -367,7 +469,7 @@ def main(argv):
         for n, text in enumerate(texts, 1):
             if n == 3:
                 stage("restart")
-                do_restart(args, payload, token, summary)
+                do_restart(args, payload, token, summary, deferred=deferred)
             stage("turn%d" % n)
             turn = {"n": n, "http_status": None, "latency_s": None,
                     "reply_chars": 0, "reply_preview": "", "degraded": None}
@@ -378,7 +480,7 @@ def main(argv):
                 if not summary["resume_recall"]:
                     summary["warnings"].append("turn 3 did not recall the codeword")
                     if args.require_recall:
-                        raise SmokeFailure("resume recall required but codeword was not recalled")
+                        deferred.append(SmokeFailure("resume recall required but codeword was not recalled"))
         stage("logcheck")
         if args.log_file or args.log_cmd:
             summary.update(log_check="pass", log_secret_leak=False)
@@ -400,6 +502,8 @@ def main(argv):
             summary["warnings"].append("no log source provided; secret leakage was not checked")
             if args.require_log_check:
                 raise SmokeFailure("log check required but no log source provided")
+        if deferred:
+            raise deferred[0]
         stage("done")
         summary["ok"] = True
     except (Exception, KeyboardInterrupt) as error:
